@@ -12,7 +12,7 @@ namespace CacheManager.Core.Internal
     {
         private static readonly Dictionary<string, Type> _types = new Dictionary<string, Type>();
         private static readonly object _typesLock = new object();
-        private static List<Func<string, Type>> _resolvers = new List<Func<string, Type>>();
+        private static readonly List<Func<string, Type>> _resolvers = new List<Func<string, Type>>();
 
         /// <summary>
         /// Gets <c>typeof(object)</c>.

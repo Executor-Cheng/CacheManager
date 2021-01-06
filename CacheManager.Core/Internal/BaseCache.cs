@@ -1,6 +1,6 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using System;
 using System.Globalization;
-using CacheManager.Core.Logging;
 using static CacheManager.Core.Utility.Guard;
 
 namespace CacheManager.Core.Internal
@@ -84,7 +84,6 @@ namespace CacheManager.Core.Internal
         /// <exception cref="ArgumentNullException">
         /// If the <paramref name="key"/> or <paramref name="region"/> is null.
         /// </exception>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1023:IndexersShouldNotBeMultidimensional", Justification = "We need both overloads.")]
         public virtual TCacheValue this[string key, string region]
         {
             get
@@ -214,7 +213,7 @@ namespace CacheManager.Core.Internal
                 return item.Value;
             }
 
-            return default(TCacheValue);
+            return default;
         }
 
         /// <summary>
@@ -238,7 +237,7 @@ namespace CacheManager.Core.Internal
                 return item.Value;
             }
 
-            return default(TCacheValue);
+            return default;
         }
 
         /// <summary>
@@ -500,7 +499,7 @@ namespace CacheManager.Core.Internal
         {
             if (value == null)
             {
-                return default(TOut);
+                return default;
             }
 
             try

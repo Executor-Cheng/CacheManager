@@ -1,4 +1,6 @@
-﻿namespace CacheManager.Core.Internal
+﻿#pragma warning disable CA1416 // Validate platform compatibility
+
+namespace CacheManager.Core.Internal
 {
     using System;
     using System.Diagnostics;
@@ -25,11 +27,15 @@
         private readonly long[] _statsCounts;
         private PerformanceCounter[] _counters;
         private bool _enabled = true;
-        private object _updateLock = new object();
+        private readonly object _updateLock = new object();
 
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Mobility", "CA1601:DoNotUseTimersThatPreventPowerStateChanges", Justification = "If perfCounters are enabled, we can live with the power consumption...")]
         public CachePerformanceCounters(string cacheName, string handleName, CacheStats<T> stats)
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                throw new NotSupportedException("CachePerformanceCounters is only supported on windows.");
+            }
+
             NotNullOrWhiteSpace(cacheName, nameof(cacheName));
 
             NotNullOrWhiteSpace(handleName, nameof(handleName));
@@ -161,7 +167,6 @@
                 });
         }
 
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes", Justification = "On Dispose the catch is just for safety...")]
         private void Dispose(bool disposeManaged)
         {
             if (disposeManaged)
@@ -188,7 +193,6 @@
 
         private PerformanceCounter GetCounter(CachePerformanceCounterType type) => _counters[(int)type];
 
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes", Justification = "At this point its fine")]
         private void InitializeCounters()
         {
             try
@@ -216,7 +220,6 @@
             }
         }
 
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes", Justification = "Is just fine at that point.")]
         private void PerformanceCounterWorker(object state)
         {
             if (_enabled && Monitor.TryEnter(_updateLock))

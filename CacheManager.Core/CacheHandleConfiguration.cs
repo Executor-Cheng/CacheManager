@@ -103,7 +103,7 @@ namespace CacheManager.Core
         /// <value>The type of the handle.</value>
         public Type HandleType { get; set; }
 
-        internal object[] ConfigurationTypes { get; set; } = new object[0];
+        internal object[] ConfigurationTypes { get; set; } = Array.Empty<object>();
 
         /// <inheritdoc />
         public override string ToString()

@@ -1,7 +1,6 @@
-﻿using System;
-using System.Linq;
-using CacheManager.Core.Internal;
-using CacheManager.Core.Logging;
+﻿using CacheManager.Core.Internal;
+using Microsoft.Extensions.Logging;
+using System;
 using static CacheManager.Core.Utility.Guard;
 
 namespace CacheManager.Core
@@ -69,9 +68,8 @@ namespace CacheManager.Core
                         item.Region);
                 }
 
-                TCacheValue returnValue;
                 var updated = string.IsNullOrWhiteSpace(item.Region) ?
-                    TryUpdate(item.Key, updateValue, maxRetries, out returnValue) :
+                    TryUpdate(item.Key, updateValue, maxRetries, out TCacheValue returnValue) :
                     TryUpdate(item.Key, item.Region, updateValue, maxRetries, out returnValue);
 
                 if (updated)
@@ -97,7 +95,7 @@ namespace CacheManager.Core
             while (tries <= maxRetries);
 
             // exceeded max retries, failing the operation... (should not happen in 99,99% of the cases though, better throw?)
-            return default(TCacheValue);
+            return default;
         }
 
         /// <inheritdoc />
@@ -144,8 +142,7 @@ namespace CacheManager.Core
             NotNull(updateValue, nameof(updateValue));
             Ensure(maxRetries >= 0, "Maximum number of retries must be greater than or equal to zero.");
 
-            var value = default(TCacheValue);
-            UpdateInternal(_cacheHandles, key, updateValue, maxRetries, true, out value);
+            UpdateInternal(_cacheHandles, key, updateValue, maxRetries, true, out TCacheValue value);
 
             return value;
         }
@@ -158,8 +155,7 @@ namespace CacheManager.Core
             NotNull(updateValue, nameof(updateValue));
             Ensure(maxRetries >= 0, "Maximum number of retries must be greater than or equal to zero.");
 
-            var value = default(TCacheValue);
-            UpdateInternal(_cacheHandles, key, region, updateValue, maxRetries, true, out value);
+            UpdateInternal(_cacheHandles, key, region, updateValue, maxRetries, true, out TCacheValue value);
 
             return value;
         }
@@ -185,7 +181,7 @@ namespace CacheManager.Core
             CheckDisposed();
 
             // assign null
-            value = default(TCacheValue);
+            value = default;
 
             if (handles.Length == 0)
             {
@@ -235,7 +231,7 @@ namespace CacheManager.Core
             }
             else if (result.UpdateState == UpdateItemResultState.FactoryReturnedNull)
             {
-                Logger.LogWarn($"Update failed on '{region}:{key}' because value factory returned null.");
+                Logger.LogWarning($"Update failed on '{region}:{key}' because value factory returned null.");
 
                 if (throwOnFailure)
                 {
@@ -247,7 +243,7 @@ namespace CacheManager.Core
                 // if we had too many retries, this basically indicates an
                 // invalid state of the cache: The item is there, but we couldn't update it and
                 // it most likely has a different version
-                Logger.LogWarn($"Update failed on '{region}:{key}' because of too many retries.");
+                Logger.LogWarning($"Update failed on '{region}:{key}' because of too many retries.");
 
                 EvictFromOtherHandles(key, region, handleIndex);
 
@@ -261,7 +257,7 @@ namespace CacheManager.Core
                 // If update fails because item doesn't exist AND the current handle is backplane source or the lowest cache handle level,
                 // remove the item from other handles (if exists).
                 // Otherwise, if we do not exit here, calling update on the next handle might succeed and would return a misleading result.
-                Logger.LogInfo($"Update failed on '{region}:{key}' because the region/key did not exist.");
+                Logger.LogInformation($"Update failed on '{region}:{key}' because the region/key did not exist.");
 
                 EvictFromOtherHandles(key, region, handleIndex);
 

@@ -4,7 +4,7 @@ namespace CacheManager.Core.Internal
 {
     internal sealed class CacheStatsCounter
     {
-        private volatile long[] _counters = new long[9];
+        private readonly long[] _counters = new long[9];
 
         public void Add(CacheStatsCounterType type, long value)
         {

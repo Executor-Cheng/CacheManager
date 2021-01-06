@@ -1,5 +1,5 @@
-﻿using System;
-using CacheManager.Core.Logging;
+﻿using Microsoft.Extensions.Logging;
+using System;
 using static CacheManager.Core.Utility.Guard;
 
 namespace CacheManager.Core.Internal

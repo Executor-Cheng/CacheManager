@@ -1,10 +1,10 @@
-﻿using System;
+﻿using CacheManager.Core.Internal;
+using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
-using CacheManager.Core.Internal;
-using CacheManager.Core.Logging;
 using static CacheManager.Core.Utility.Guard;
 
 namespace CacheManager.Core
@@ -56,8 +56,6 @@ namespace CacheManager.Core
         /// <see cref="CacheFactory"/>
         /// <see cref="ConfigurationBuilder"/>
         /// <see cref="BaseCacheHandle{TCacheValue}"/>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2200:RethrowToPreserveStackDetails", Justification = "fine for now")]
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "nope")]
         private BaseCacheManager(string name, ICacheManagerConfiguration configuration)
         {
             NotNullOrWhiteSpace(name, nameof(name));
@@ -69,11 +67,11 @@ namespace CacheManager.Core
             var loggerFactory = CacheReflectionHelper.CreateLoggerFactory(configuration);
             var serializer = CacheReflectionHelper.CreateSerializer(configuration, loggerFactory);
 
-            Logger = loggerFactory.CreateLogger(this);
+            Logger = loggerFactory.CreateLogger(this.GetType());
 
             _logTrace = Logger.IsEnabled(LogLevel.Trace);
 
-            Logger.LogInfo("Cache manager: adding cache handles...");
+            Logger.LogInformation("Cache manager: adding cache handles...");
 
             try
             {

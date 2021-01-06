@@ -1,6 +1,5 @@
-﻿using System;
-using System.Linq;
-using CacheManager.Core.Logging;
+﻿using Microsoft.Extensions.Logging;
+using System;
 
 namespace CacheManager.Core
 {
@@ -104,13 +103,13 @@ namespace CacheManager.Core
         /// <inheritdoc />
         public void RemoveExpiration(string key)
         {
-            Expire(key, ExpirationMode.None, default(TimeSpan));
+            Expire(key, ExpirationMode.None, default);
         }
 
         /// <inheritdoc />
         public void RemoveExpiration(string key, string region)
         {
-            Expire(key, region, ExpirationMode.None, default(TimeSpan));
+            Expire(key, region, ExpirationMode.None, default);
         }
     }
 }

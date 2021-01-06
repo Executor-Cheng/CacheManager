@@ -8,8 +8,8 @@ namespace CacheManager.Core
     /// The item which will be stored in the cache holding the cache value and additional
     /// information needed by the cache handles and manager.
     /// </summary>
-    /// <typeparam name="T">The type of the cache value.</typeparam>
-    public class CacheItem<T> : ICacheItemProperties
+    /// <typeparam name="TValue">The type of the cache value.</typeparam>
+    public class CacheItem<TValue> : ICacheItemProperties
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="CacheItem{T}"/> class.
@@ -17,7 +17,7 @@ namespace CacheManager.Core
         /// <param name="key">The cache key.</param>
         /// <param name="value">The cache value.</param>
         /// <exception cref="System.ArgumentNullException">If key or value are null.</exception>
-        public CacheItem(string key, T value)
+        public CacheItem(string key, TValue value)
             : this(key, null, value, null, null, null)
         {
         }
@@ -29,7 +29,7 @@ namespace CacheManager.Core
         /// <param name="value">The cache value.</param>
         /// <param name="region">The cache region.</param>
         /// <exception cref="System.ArgumentNullException">If key, value or region are null.</exception>
-        public CacheItem(string key, string region, T value)
+        public CacheItem(string key, string region, TValue value)
             : this(key, region, value, null, null, null)
         {
             NotNullOrWhiteSpace(region, nameof(region));
@@ -43,7 +43,7 @@ namespace CacheManager.Core
         /// <param name="expiration">The expiration mode.</param>
         /// <param name="timeout">The expiration timeout.</param>
         /// <exception cref="System.ArgumentNullException">If key or value are null.</exception>
-        public CacheItem(string key, T value, ExpirationMode expiration, TimeSpan timeout)
+        public CacheItem(string key, TValue value, ExpirationMode expiration, TimeSpan timeout)
             : this(key, null, value, expiration, timeout, null, null, false)
         {
         }
@@ -57,7 +57,7 @@ namespace CacheManager.Core
         /// <param name="expiration">The expiration mode.</param>
         /// <param name="timeout">The expiration timeout.</param>
         /// <exception cref="System.ArgumentNullException">If key, value or region are null.</exception>
-        public CacheItem(string key, string region, T value, ExpirationMode expiration, TimeSpan timeout)
+        public CacheItem(string key, string region, TValue value, ExpirationMode expiration, TimeSpan timeout)
             : this(key, region, value, expiration, timeout, null, null, false)
         {
             NotNullOrWhiteSpace(region, nameof(region));
@@ -70,7 +70,7 @@ namespace CacheManager.Core
         {
         }
 
-        private CacheItem(string key, string region, T value, ExpirationMode? expiration, TimeSpan? timeout, DateTime? created, DateTime? lastAccessed = null, bool expirationDefaults = true)
+        private CacheItem(string key, string region, TValue value, ExpirationMode? expiration, TimeSpan? timeout, DateTime? created, DateTime? lastAccessed = null, bool expirationDefaults = true)
         {
             NotNullOrWhiteSpace(key, nameof(key));
             NotNull(value, nameof(value));
@@ -174,7 +174,7 @@ namespace CacheManager.Core
         /// Gets the cache value.
         /// </summary>
         /// <value>The cache value.</value>
-        public T Value { get; }
+        public TValue Value { get; }
 
         /// <summary>
         /// Gets the type of the cache value.
@@ -196,8 +196,8 @@ namespace CacheManager.Core
                 : $"'{Key}', exp:{ExpirationMode} {ExpirationTimeout}, lastAccess:{LastAccessedUtc}";
         }
 
-        internal CacheItem<T> WithExpiration(ExpirationMode mode, TimeSpan timeout, bool usesHandleDefault = true) =>
-            new CacheItem<T>(Key, Region, Value, mode, timeout, mode == ExpirationMode.Absolute ? DateTime.UtcNow : CreatedUtc, LastAccessedUtc, usesHandleDefault);
+        internal CacheItem<TValue> WithExpiration(ExpirationMode mode, TimeSpan timeout, bool usesHandleDefault = true) =>
+            new CacheItem<TValue>(Key, Region, Value, mode, timeout, mode == ExpirationMode.Absolute ? DateTime.UtcNow : CreatedUtc, LastAccessedUtc, usesHandleDefault);
 
         /// <summary>
         /// Creates a copy of the current cache item and sets a new absolute expiration date.
@@ -206,7 +206,7 @@ namespace CacheManager.Core
         /// <remarks>We do not clone the cache item or value.</remarks>
         /// <param name="absoluteExpiration">The absolute expiration date.</param>
         /// <returns>The new instance of the cache item.</returns>
-        public CacheItem<T> WithAbsoluteExpiration(DateTimeOffset absoluteExpiration)
+        public CacheItem<TValue> WithAbsoluteExpiration(DateTimeOffset absoluteExpiration)
         {
             var timeout = absoluteExpiration - DateTimeOffset.UtcNow;
             if (timeout <= TimeSpan.Zero)
@@ -224,7 +224,7 @@ namespace CacheManager.Core
         /// <remarks>We do not clone the cache item or value.</remarks>
         /// <param name="absoluteExpiration">The absolute expiration date.</param>
         /// <returns>The new instance of the cache item.</returns>
-        public CacheItem<T> WithAbsoluteExpiration(TimeSpan absoluteExpiration)
+        public CacheItem<TValue> WithAbsoluteExpiration(TimeSpan absoluteExpiration)
         {
             if (absoluteExpiration <= TimeSpan.Zero)
             {
@@ -241,7 +241,7 @@ namespace CacheManager.Core
         /// <remarks>We do not clone the cache item or value.</remarks>
         /// <param name="slidingExpiration">The sliding expiration value.</param>
         /// <returns>The new instance of the cache item.</returns>
-        public CacheItem<T> WithSlidingExpiration(TimeSpan slidingExpiration)
+        public CacheItem<TValue> WithSlidingExpiration(TimeSpan slidingExpiration)
         {
             if (slidingExpiration <= TimeSpan.Zero)
             {
@@ -258,8 +258,8 @@ namespace CacheManager.Core
         /// </summary>
         /// <remarks>We do not clone the cache item or value.</remarks>
         /// <returns>The new instance of the cache item.</returns>
-        public CacheItem<T> WithNoExpiration() =>
-            new CacheItem<T>(Key, Region, Value, ExpirationMode.None, TimeSpan.Zero, CreatedUtc, LastAccessedUtc, false);
+        public CacheItem<TValue> WithNoExpiration() =>
+            new CacheItem<TValue>(Key, Region, Value, ExpirationMode.None, TimeSpan.Zero, CreatedUtc, LastAccessedUtc, false);
 
         /// <summary>
         /// Creates a copy of the current cache item with no explicit expiration, instructing the cache to use the default defined in the cache handle configuration.
@@ -267,8 +267,8 @@ namespace CacheManager.Core
         /// </summary>
         /// <remarks>We do not clone the cache item or value.</remarks>
         /// <returns>The new instance of the cache item.</returns>
-        public CacheItem<T> WithDefaultExpiration() =>
-            new CacheItem<T>(Key, Region, Value, ExpirationMode.Default, TimeSpan.Zero, CreatedUtc, LastAccessedUtc, true);
+        public CacheItem<TValue> WithDefaultExpiration() =>
+            new CacheItem<TValue>(Key, Region, Value, ExpirationMode.Default, TimeSpan.Zero, CreatedUtc, LastAccessedUtc, true);
 
         /// <summary>
         /// Creates a copy of the current cache item with new value.
@@ -277,8 +277,8 @@ namespace CacheManager.Core
         /// <remarks>We do not clone the cache item or value.</remarks>
         /// <param name="value">The new value.</param>
         /// <returns>The new instance of the cache item.</returns>
-        public CacheItem<T> WithValue(T value) =>
-            new CacheItem<T>(Key, Region, value, ExpirationMode, ExpirationTimeout, CreatedUtc, LastAccessedUtc, UsesExpirationDefaults);
+        public CacheItem<TValue> WithValue(TValue value) =>
+            new CacheItem<TValue>(Key, Region, value, ExpirationMode, ExpirationTimeout, CreatedUtc, LastAccessedUtc, UsesExpirationDefaults);
 
         /// <summary>
         /// Creates a copy of the current cache item with a given created date.
@@ -287,7 +287,7 @@ namespace CacheManager.Core
         /// <remarks>We do not clone the cache item or value.</remarks>
         /// <param name="created">The new created date.</param>
         /// <returns>The new instance of the cache item.</returns>
-        public CacheItem<T> WithCreated(DateTime created) =>
-            new CacheItem<T>(Key, Region, Value, ExpirationMode, ExpirationTimeout, created, LastAccessedUtc, UsesExpirationDefaults);
+        public CacheItem<TValue> WithCreated(DateTime created) =>
+            new CacheItem<TValue>(Key, Region, Value, ExpirationMode, ExpirationTimeout, created, LastAccessedUtc, UsesExpirationDefaults);
     }
 }

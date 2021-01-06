@@ -138,22 +138,14 @@ namespace CacheManager.Core.Internal
         /// <inheritdoc />
         public override string ToString()
         {
-            switch (Action)
+            return Action switch
             {
-                case Changed:
-                    return $"{Action} {Region}:{Key} {ChangeAction}";
-
-                case Removed:
-                    return $"{Action} {Region}:{Key}";
-
-                case ClearRegion:
-                    return $"{Action} {Region}";
-
-                case Clear:
-                    return $"{Action}";
-            }
-
-            return string.Empty;
+                Changed => $"{Action} {Region}:{Key} {ChangeAction}",
+                Removed => $"{Action} {Region}:{Key}",
+                ClearRegion => $"{Action} {Region}",
+                Clear => Action.ToString(),
+                _ => string.Empty,
+            };
         }
 
         /// <inheritdoc />
@@ -169,8 +161,7 @@ namespace CacheManager.Core.Internal
                 return true;
             }
 
-            var objCast = obj as BackplaneMessage;
-            if (objCast == null)
+            if (obj is not BackplaneMessage objCast)
             {
                 return false;
             }
@@ -411,7 +402,7 @@ namespace CacheManager.Core.Internal
 
         private class MessageWriter
         {
-            private static Encoding _encoding = Encoding.UTF8;
+            private static readonly Encoding _encoding = Encoding.UTF8;
             private readonly byte[] _buffer;
             private int _position = 0;
 
@@ -478,7 +469,7 @@ namespace CacheManager.Core.Internal
 
         private class MessageReader
         {
-            private static Encoding _encoding = Encoding.UTF8;
+            private static readonly Encoding _encoding = Encoding.UTF8;
             private readonly byte[] _data;
             private int _position = 0;
 

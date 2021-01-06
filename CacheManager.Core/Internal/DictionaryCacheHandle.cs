@@ -1,8 +1,8 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading;
-using CacheManager.Core.Logging;
 using static CacheManager.Core.Utility.Guard;
 
 namespace CacheManager.Core.Internal
@@ -18,10 +18,7 @@ namespace CacheManager.Core.Internal
         private readonly ConcurrentDictionary<string, CacheItem<TCacheValue>> _cache;
         private readonly Timer _timer;
 
-        //private long _lastScan = 0L;
         private int _scanRunning;
-
-        //private object _startScanLock = new object();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DictionaryCacheHandle{TCacheValue}"/> class.
@@ -33,7 +30,7 @@ namespace CacheManager.Core.Internal
             : base(managerConfiguration, configuration)
         {
             NotNull(loggerFactory, nameof(loggerFactory));
-            Logger = loggerFactory.CreateLogger(this);
+            Logger = loggerFactory.CreateLogger(this.GetType());
             _cache = new ConcurrentDictionary<string, CacheItem<TCacheValue>>();
             _timer = new Timer(TimerLoop, null, _random.Next(1000, ScanInterval), ScanInterval);
         }
@@ -66,6 +63,15 @@ namespace CacheManager.Core.Internal
             {
                 _cache.TryRemove(item.Key, out CacheItem<TCacheValue> val);
             }
+        }
+
+        protected override void Dispose(bool disposeManaged)
+        {
+            if (disposeManaged)
+            {
+                _timer.Dispose();
+            }
+            base.Dispose(disposeManaged);
         }
 
         /// <inheritdoc />
@@ -123,7 +129,7 @@ namespace CacheManager.Core.Internal
             {
                 if (result.ExpirationMode != ExpirationMode.None && IsExpired(result, DateTime.UtcNow))
                 {
-                    _cache.TryRemove(fullKey, out CacheItem<TCacheValue> removeResult);
+                    _cache.TryRemove(fullKey, out CacheItem<TCacheValue> _);
                     TriggerCacheSpecificRemove(key, region, CacheItemRemovedReason.Expired, result.Value);
                     return null;
                 }
@@ -165,7 +171,7 @@ namespace CacheManager.Core.Internal
         protected override bool RemoveInternal(string key, string region)
         {
             var fullKey = GetKey(key, region);
-            return _cache.TryRemove(fullKey, out CacheItem<TCacheValue> val);
+            return _cache.TryRemove(fullKey, out CacheItem<TCacheValue> _);
         }
 
         /// <summary>
@@ -253,7 +259,7 @@ namespace CacheManager.Core.Internal
 
             if (removed > 0 && Logger.IsEnabled(LogLevel.Information))
             {
-                Logger.LogInfo("'{0}' removed '{1}' expired items during eviction run.", Configuration.Name, removed);
+                Logger.LogInformation("'{0}' removed '{1}' expired items during eviction run.", Configuration.Name, removed);
             }
 
             return removed;

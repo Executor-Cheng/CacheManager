@@ -84,7 +84,6 @@ namespace CacheManager.Core
         /// Gets or sets additional arguments which should be used instantiating the backplane.
         /// </summary>
         /// <value>The list of arguments.</value>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1819:PropertiesShouldNotReturnArrays", Justification = "nope")]
         public object[] BackplaneTypeArguments { get; set; }
 
         /// <summary>
@@ -97,7 +96,6 @@ namespace CacheManager.Core
         /// Gets or sets additional arguments which should be used instantiating the serializer.
         /// </summary>
         /// <value>The list of arguments.</value>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1819:PropertiesShouldNotReturnArrays", Justification = "nope")]
         public object[] SerializerTypeArguments { get; set; }
 
         /// <summary>
@@ -112,7 +110,6 @@ namespace CacheManager.Core
         /// Gets or sets additional arguments which should be used instantiating the logger factory.
         /// </summary>
         /// <value>The list of arguments.</value>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1819:PropertiesShouldNotReturnArrays", Justification = "nope")]
         public object[] LoggerFactoryTypeArguments { get; set; }
 
         /// <summary>

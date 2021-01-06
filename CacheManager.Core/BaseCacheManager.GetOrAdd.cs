@@ -72,7 +72,7 @@ namespace CacheManager.Core
                 return true;
             }
 
-            value = default(TCacheValue);
+            value = default;
             return false;
         }
 
@@ -97,7 +97,7 @@ namespace CacheManager.Core
                 return true;
             }
 
-            value = default(TCacheValue);
+            value = default;
             return false;
         }
 

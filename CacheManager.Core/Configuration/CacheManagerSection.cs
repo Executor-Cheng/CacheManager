@@ -17,7 +17,7 @@
 
         private const string HandlesName = "cacheHandles";
         private const string ManagersName = "managers";
-        private const string RedisName = "redis";
+        //private const string RedisName = "redis";
 
         /// <summary>
         /// Gets the cache handle definitions.

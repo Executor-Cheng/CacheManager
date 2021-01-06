@@ -1,9 +1,10 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
-using CacheManager.Core.Logging;
 using static CacheManager.Core.Utility.Guard;
 
 namespace CacheManager.Core.Internal
@@ -92,7 +93,7 @@ namespace CacheManager.Core.Internal
 
             foreach (var handleConfiguration in managerConfiguration.CacheHandleConfigurations)
             {
-                logger.LogInfo("Creating handle {0} of type {1}.", handleConfiguration.Name, handleConfiguration.HandleType);
+                logger.LogInformation("Creating handle {0} of type {1}.", handleConfiguration.Name, handleConfiguration.HandleType);
                 var handleType = handleConfiguration.HandleType;
                 var requiresSerializer = false;
 

@@ -49,7 +49,7 @@ namespace CacheManager.Core.Internal
             NotNullOrWhiteSpace(handleName, nameof(handleName));
 
             // if performance counters are enabled, stats must be enabled, too.
-            _isStatsEnabled = enablePerformanceCounters ? true : enabled;
+            _isStatsEnabled = enablePerformanceCounters || enabled;
             _isPerformanceCounterEnabled = enablePerformanceCounters;
             _counters = new ConcurrentDictionary<string, CacheStatsCounter>();
 
@@ -211,8 +211,7 @@ namespace CacheManager.Core.Internal
             // clear needs a lock, otherwise we might mess up the overall counts
             foreach (var key in _counters.Keys)
             {
-                CacheStatsCounter counter = null;
-                if (_counters.TryGetValue(key, out counter))
+                if (_counters.TryGetValue(key, out CacheStatsCounter counter))
                 {
                     counter.Set(CacheStatsCounterType.Items, 0L);
                     counter.Increment(CacheStatsCounterType.ClearCalls);
@@ -380,8 +379,7 @@ namespace CacheManager.Core.Internal
         {
             NotNullOrWhiteSpace(key, nameof(key));
 
-            CacheStatsCounter counter = null;
-            if (!_counters.TryGetValue(key, out counter))
+            if (!_counters.TryGetValue(key, out CacheStatsCounter counter))
             {
                 counter = new CacheStatsCounter();
                 if (_counters.TryAdd(key, counter))

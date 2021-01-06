@@ -47,7 +47,6 @@ namespace CacheManager.Core
         /// <exception cref="ArgumentNullException">
         /// If the <paramref name="key"/> or <paramref name="region"/> is null.
         /// </exception>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1023:IndexersShouldNotBeMultidimensional", Justification = "nope")]
         TCacheValue this[string key, string region] { get; set; }
 
         /// <summary>

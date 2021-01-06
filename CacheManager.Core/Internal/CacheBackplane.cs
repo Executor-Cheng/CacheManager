@@ -21,18 +21,18 @@ namespace CacheManager.Core.Internal
         /// <summary>
         /// Number of messages sent.
         /// </summary>
-        public static long MessagesSent = 0;
+        public static long MessagesSent { get; set; }
 
         /// <summary>
         /// Number of messages received.
         /// </summary>
-        public static long MessagesReceived = 0;
+        public static long MessagesReceived { get; set; }
 
         /// <summary>
         /// Number of message chunks sent.
         /// Messages are sent in chunks to improve performance and decrease network traffic.
         /// </summary>
-        public static long SentChunks = 0;
+        public static long SentChunks { get; set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="CacheBackplane" /> class.

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using System.Threading;
 
 namespace CacheManager.Core.Utility
@@ -40,17 +39,12 @@ namespace CacheManager.Core.Utility
         /// <param name="maxItems">Number of items to keep, defaults to number of processors * 2.</param>
         public ObjectPool(IObjectPoolPolicy<T> policy, int? maxItems = null)
         {
-            if (policy == null)
-            {
-                throw new ArgumentNullException(nameof(policy));
-            }
-
             if (maxItems == null || maxItems <= 0)
             {
                 maxItems = Environment.ProcessorCount * 2;
             }
 
-            _policy = policy;
+            _policy = policy ?? throw new ArgumentNullException(nameof(policy));
             _items = new T[maxItems.Value];
         }
 
