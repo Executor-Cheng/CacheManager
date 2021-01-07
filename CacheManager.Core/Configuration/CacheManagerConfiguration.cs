@@ -1,12 +1,65 @@
-﻿using System;
-using static CacheManager.Core.Utility.Guard;
+﻿using CacheManager.Core.Internal;
+using System;
 
-namespace CacheManager.Core
+namespace CacheManager.Core.Configuration
 {
     /// <summary>
-    /// Defines all settings the cache handle should respect.
+    /// The basic cache manager configuration class.
     /// </summary>
-    public sealed class CacheHandleConfiguration
+    public sealed class CacheManagerConfiguration<TKey, TValue> where TKey : notnull
+    {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="CacheManagerConfiguration"/> class.
+        /// </summary>
+        public CacheManagerConfiguration()
+        {
+        }
+
+        /// <summary>
+        /// Gets or sets the name of the cache.
+        /// </summary>
+        /// <value>The name of the cache.</value>
+        public string Name { get; set; } = Guid.NewGuid().ToString();
+
+        /// <summary>
+        /// Gets or sets the <see cref="UpdateMode"/> for the cache manager instance.
+        /// <para>
+        /// Drives the behavior of the cache manager how it should update the different cache
+        /// handles it manages.
+        /// </para>
+        /// </summary>
+        /// <value>The cache update mode.</value>
+        /// <see cref="UpdateMode"/>
+        public CacheUpdateMode UpdateMode { get; set; } = CacheUpdateMode.Up;
+
+        /// <summary>
+        /// Gets or sets the limit of the number of retry operations per action.
+        /// <para>Default is 50.</para>
+        /// </summary>
+        /// <value>The maximum retries.</value>
+        public int MaxRetries { get; set; } = 50;
+
+        /// <summary>
+        /// Gets or sets the number of milliseconds the cache should wait before it will retry an action.
+        /// <para>Default is 100.</para>
+        /// </summary>
+        /// <value>The retry timeout.</value>
+        public int RetryTimeout { get; set; } = 100;
+
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            return $"{Name}: {UpdateMode} with {MaxRetries} {(MaxRetries > 1 ? "retries" : "retry")}, timeout={RetryTimeout}s";
+        }
+    }
+
+    public class CacheHandleConfiguration<TKey, TValue, THandle> : CacheHandleConfiguration where TKey : notnull 
+                                                                                            where THandle : IBaseCacheHandle<TKey, TValue>
+    {
+
+    }
+
+    public abstract class CacheHandleConfiguration
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="CacheHandleConfiguration"/> class.
@@ -14,35 +67,6 @@ namespace CacheManager.Core
         public CacheHandleConfiguration()
         {
             Name = Key = Guid.NewGuid().ToString();
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="CacheHandleConfiguration"/> class.
-        /// </summary>
-        /// <param name="handleName">Name of the handle. This value will also be used for the <see cref="Key"/>.</param>
-        /// <exception cref="System.ArgumentNullException">If <paramref name="handleName"/> is null.</exception>
-        public CacheHandleConfiguration(string handleName)
-        {
-            NotNullOrWhiteSpace(handleName, nameof(handleName));
-
-            Name = Key = handleName;
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="CacheHandleConfiguration"/> class.
-        /// </summary>
-        /// <param name="handleName">Name of the handle.</param>
-        /// <param name="configurationKey">The key which can be used to identify another part of the configuration which the handle might need.</param>
-        /// <exception cref="System.ArgumentNullException">
-        /// If <paramref name="handleName"/> or <paramref name="configurationKey"/> is null.
-        /// </exception>
-        public CacheHandleConfiguration(string handleName, string configurationKey)
-        {
-            NotNullOrWhiteSpace(handleName, nameof(handleName));
-            NotNullOrWhiteSpace(configurationKey, nameof(configurationKey));
-
-            Name = handleName;
-            Key = configurationKey;
         }
 
         /// <summary>
@@ -96,19 +120,5 @@ namespace CacheManager.Core
         /// </summary>
         /// <value><c>true</c> if this instance should be backplane source; otherwise, <c>false</c>.</value>
         public bool IsBackplaneSource { get; set; }
-
-        /// <summary>
-        /// Gets or sets the type of the handle.
-        /// </summary>
-        /// <value>The type of the handle.</value>
-        public Type HandleType { get; set; }
-
-        internal object[] ConfigurationTypes { get; set; } = Array.Empty<object>();
-
-        /// <inheritdoc />
-        public override string ToString()
-        {
-            return $"{HandleType}";
-        }
     }
 }

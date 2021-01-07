@@ -5,7 +5,7 @@ namespace CacheManager.Core.Internal
     /// <summary>
     /// Contract which exposes only the properties of the <see cref="CacheItem{T}"/> without T value.
     /// </summary>
-    public interface ICacheItemProperties
+    public interface ICacheItemProperties<TKey> where TKey : notnull
     {
         /// <summary>
         /// Gets the creation date of the cache item.
@@ -29,19 +29,13 @@ namespace CacheManager.Core.Internal
         /// Gets the cache key.
         /// </summary>
         /// <value>The cache key.</value>
-        string Key { get; }
+        TKey Key { get; }
 
         /// <summary>
         /// Gets or sets the last accessed date of the cache item.
         /// </summary>
         /// <value>The last accessed date.</value>
         DateTime LastAccessedUtc { get; set; }
-
-        /// <summary>
-        /// Gets the cache region.
-        /// </summary>
-        /// <value>The cache region.</value>
-        string Region { get; }
 
         /// <summary>
         /// Gets a value indicating whether the cache item uses the cache handle's configured expiration.

@@ -1,72 +1,53 @@
 ﻿using System;
-using System.Linq;
 using static CacheManager.Core.Utility.Guard;
 
 namespace CacheManager.Core
 {
-    public partial class BaseCacheManager<TCacheValue>
+    public partial class BaseCacheManager<TKey, TValue>
     {
         /// <inheritdoc />
-        public TCacheValue GetOrAdd(string key, TCacheValue value)
-            => GetOrAdd(key, (k) => value);
-
-        /// <inheritdoc />
-        public TCacheValue GetOrAdd(string key, string region, TCacheValue value)
-            => GetOrAdd(key, region, (k, r) => value);
-
-        /// <inheritdoc />
-        public TCacheValue GetOrAdd(string key, Func<string, TCacheValue> valueFactory)
+        public TValue GetOrAdd(TKey key, TValue value)
         {
-            NotNullOrWhiteSpace(key, nameof(key));
-            NotNull(valueFactory, nameof(valueFactory));
-
-            return GetOrAddInternal(key, null, (k, r) => new CacheItem<TCacheValue>(k, valueFactory(k))).Value;
+            NotNull(key, nameof(key));
+            if (TryGetOrAddInternal(key, value, out CacheItem<TKey, TValue> ritemsult))
+            {
+                return ritemsult.Value;
+            }
+            throw new InvalidOperationException($"Could not get nor add the item {key}");
         }
 
         /// <inheritdoc />
-        public TCacheValue GetOrAdd(string key, string region, Func<string, string, TCacheValue> valueFactory)
+        public TValue GetOrAdd(TKey key, Func<TKey, TValue> valueFactory)
         {
-            NotNullOrWhiteSpace(key, nameof(key));
-            NotNullOrWhiteSpace(region, nameof(region));
+            NotNull(key, nameof(key));
             NotNull(valueFactory, nameof(valueFactory));
-
-            return GetOrAddInternal(key, region, (k, r) => new CacheItem<TCacheValue>(k, r, valueFactory(k, r))).Value;
+            if (TryGetOrAddInternal(key, k => new CacheItem<TKey, TValue>(k, valueFactory(k)), out CacheItem<TKey, TValue> item))
+            {
+                return item.Value;
+            }
+            throw new InvalidOperationException($"Could not get nor add the item {key}");
         }
 
         /// <inheritdoc />
-        public CacheItem<TCacheValue> GetOrAdd(string key, Func<string, CacheItem<TCacheValue>> valueFactory)
+        public CacheItem<TKey, TValue> GetOrAdd(TKey key, Func<TKey, CacheItem<TKey, TValue>> valueFactory)
         {
-            NotNullOrWhiteSpace(key, nameof(key));
+            NotNull(key, nameof(key));
             NotNull(valueFactory, nameof(valueFactory));
 
-            return GetOrAddInternal(key, null, (k, r) => valueFactory(k));
+            if (TryGetOrAddInternal(key, valueFactory, out CacheItem<TKey, TValue> item))
+            {
+                return item;
+            }
+            throw new InvalidOperationException($"Could not get nor add the item {key}");
         }
 
         /// <inheritdoc />
-        public CacheItem<TCacheValue> GetOrAdd(string key, string region, Func<string, string, CacheItem<TCacheValue>> valueFactory)
+        public bool TryGetOrAdd(TKey key, Func<TKey, TValue> valueFactory, out TValue value)
         {
-            NotNullOrWhiteSpace(key, nameof(key));
-            NotNullOrWhiteSpace(region, nameof(region));
+            NotNull(key, nameof(key));
             NotNull(valueFactory, nameof(valueFactory));
 
-            return GetOrAddInternal(key, region, valueFactory);
-        }
-
-        /// <inheritdoc />
-        public bool TryGetOrAdd(string key, Func<string, TCacheValue> valueFactory, out TCacheValue value)
-        {
-            NotNullOrWhiteSpace(key, nameof(key));
-            NotNull(valueFactory, nameof(valueFactory));
-
-            if (TryGetOrAddInternal(
-                key,
-                null,
-                (k, r) =>
-                {
-                    var newValue = valueFactory(k);
-                    return newValue == null ? null : new CacheItem<TCacheValue>(k, newValue);
-                },
-                out var item))
+            if (TryGetOrAddInternal(key, k => new CacheItem<TKey, TValue>(k, valueFactory(k)), out var item))
             {
                 value = item.Value;
                 return true;
@@ -77,57 +58,22 @@ namespace CacheManager.Core
         }
 
         /// <inheritdoc />
-        public bool TryGetOrAdd(string key, string region, Func<string, string, TCacheValue> valueFactory, out TCacheValue value)
+        public bool TryGetOrAdd(TKey key, Func<TKey, CacheItem<TKey, TValue>> valueFactory, out CacheItem<TKey, TValue> item)
         {
-            NotNullOrWhiteSpace(key, nameof(key));
-            NotNullOrWhiteSpace(region, nameof(region));
+            NotNull(key, nameof(key));
             NotNull(valueFactory, nameof(valueFactory));
 
-            if (TryGetOrAddInternal(
-                key,
-                region,
-                (k, r) =>
-                {
-                    var newValue = valueFactory(k, r);
-                    return newValue == null ? null : new CacheItem<TCacheValue>(k, r, newValue);
-                },
-                out var item))
-            {
-                value = item.Value;
-                return true;
-            }
-
-            value = default;
-            return false;
+            return TryGetOrAddInternal(key, valueFactory, out item);
         }
 
-        /// <inheritdoc />
-        public bool TryGetOrAdd(string key, Func<string, CacheItem<TCacheValue>> valueFactory, out CacheItem<TCacheValue> item)
+        private bool TryGetOrAddInternal(TKey key, TValue value, out CacheItem<TKey, TValue> item)
         {
-            NotNullOrWhiteSpace(key, nameof(key));
-            NotNull(valueFactory, nameof(valueFactory));
-
-            return TryGetOrAddInternal(key, null, (k, r) => valueFactory(k), out item);
-        }
-
-        /// <inheritdoc />
-        public bool TryGetOrAdd(string key, string region, Func<string, string, CacheItem<TCacheValue>> valueFactory, out CacheItem<TCacheValue> item)
-        {
-            NotNullOrWhiteSpace(key, nameof(key));
-            NotNullOrWhiteSpace(region, nameof(region));
-            NotNull(valueFactory, nameof(valueFactory));
-
-            return TryGetOrAddInternal(key, region, valueFactory, out item);
-        }
-
-        private bool TryGetOrAddInternal(string key, string region, Func<string, string, CacheItem<TCacheValue>> valueFactory, out CacheItem<TCacheValue> item)
-        {
-            CacheItem<TCacheValue> newItem = null;
+            CacheItem<TKey, TValue> newItem = null;
             var tries = 0;
             do
             {
                 tries++;
-                item = GetCacheItemInternal(key, region);
+                item = GetCacheItemInternal(key);
                 if (item != null)
                 {
                     return true;
@@ -136,12 +82,7 @@ namespace CacheManager.Core
                 // changed logic to invoke the factory only once in case of retries
                 if (newItem == null)
                 {
-                    newItem = valueFactory(key, region);
-                }
-
-                if (newItem == null)
-                {
-                    return false;
+                    newItem = new CacheItem<TKey, TValue>(key, value);
                 }
 
                 if (AddInternal(newItem))
@@ -151,46 +92,44 @@ namespace CacheManager.Core
                 }
             }
             while (tries <= Configuration.MaxRetries);
-
             return false;
         }
 
-        private CacheItem<TCacheValue> GetOrAddInternal(string key, string region, Func<string, string, CacheItem<TCacheValue>> valueFactory)
+        private bool TryGetOrAddInternal(TKey key, Func<TKey, CacheItem<TKey, TValue>> valueFactory, out CacheItem<TKey, TValue> item)
         {
-            CacheItem<TCacheValue> newItem = null;
+            CacheItem<TKey, TValue> newItem = null;
             var tries = 0;
             do
             {
                 tries++;
-                var item = GetCacheItemInternal(key, region);
+                item = GetCacheItemInternal(key);
                 if (item != null)
                 {
-                    return item;
+                    return true;
                 }
 
                 // changed logic to invoke the factory only once in case of retries
                 if (newItem == null)
                 {
-                    newItem = valueFactory(key, region);
-                }
-
-                // Throw explicit to me more consistent. Otherwise it would throw later eventually...
-                if (newItem == null)
-                {
-                    throw new InvalidOperationException("The CacheItem which should be added must not be null.");
+                    newItem = valueFactory(key);
+                    if (newItem == null)
+                    {
+                        return false;
+                    }
                 }
 
                 if (AddInternal(newItem))
                 {
-                    return newItem;
+                    item = newItem;
+                    return true;
                 }
             }
             while (tries <= Configuration.MaxRetries);
-
-            // should usually never occur, but could if e.g. max retries is 1 and an item gets added between the get and add.
-            // pretty unusual, so keep the max tries at least around 50
-            throw new InvalidOperationException(
-                string.Format("Could not get nor add the item {0} {1}", key, region));
+            if (newItem.Value is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
+            return false;
         }
     }
 }

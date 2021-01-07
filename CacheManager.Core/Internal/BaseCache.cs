@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using static CacheManager.Core.Utility.Guard;
 
@@ -13,8 +14,8 @@ namespace CacheManager.Core.Internal
     /// <br/> All other methods defined by <c>ICache</c> will be delegated to those methods.
     /// </para>
     /// </summary>
-    /// <typeparam name="TCacheValue">The type of the cache value.</typeparam>
-    public abstract class BaseCache<TCacheValue> : IDisposable, ICache<TCacheValue>
+    /// <typeparam name="TValue">The type of the cache value.</typeparam>
+    public abstract class BaseCache<TKey, TValue> : ICache<TKey, TValue> where TKey : notnull
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="BaseCache{TCacheValue}"/> class.
@@ -51,12 +52,12 @@ namespace CacheManager.Core.Internal
 
         /// <summary>
         /// Gets or sets a value for the specified key. The indexer is identical to the
-        /// corresponding <see cref="Put(string, TCacheValue)"/> and <see cref="Get(string)"/> calls.
+        /// corresponding <see cref="Put(string, TValue)"/> and <see cref="Get(string)"/> calls.
         /// </summary>
         /// <param name="key">The key being used to identify the item within the cache.</param>
         /// <returns>The value being stored in the cache for the given <paramref name="key"/>.</returns>
         /// <exception cref="ArgumentNullException">If the <paramref name="key"/> is null.</exception>
-        public virtual TCacheValue this[string key]
+        public virtual TValue this[TKey key]
         {
             get
             {
@@ -65,34 +66,6 @@ namespace CacheManager.Core.Internal
             set
             {
                 Put(key, value);
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets a value for the specified key and region. The indexer is identical to the
-        /// corresponding <see cref="Put(string, TCacheValue, string)"/> and
-        /// <see cref="Get(string, string)"/> calls.
-        /// <para>
-        /// With <paramref name="region"/> specified, the key will <b>not</b> be found in the global cache.
-        /// </para>
-        /// </summary>
-        /// <param name="key">The key being used to identify the item within the cache.</param>
-        /// <param name="region">The cache region.</param>
-        /// <returns>
-        /// The value being stored in the cache for the given <paramref name="key"/> and <paramref name="region"/>.
-        /// </returns>
-        /// <exception cref="ArgumentNullException">
-        /// If the <paramref name="key"/> or <paramref name="region"/> is null.
-        /// </exception>
-        public virtual TCacheValue this[string key, string region]
-        {
-            get
-            {
-                return Get(key, region);
-            }
-            set
-            {
-                Put(key, value, region);
             }
         }
 
@@ -111,36 +84,10 @@ namespace CacheManager.Core.Internal
         /// <exception cref="ArgumentNullException">
         /// If the <paramref name="key"/> or <paramref name="value"/> is null.
         /// </exception>
-        public virtual bool Add(string key, TCacheValue value)
+        public virtual bool Add(TKey key, TValue value)
         {
             // null checks are done within ctor of the item
-            var item = new CacheItem<TCacheValue>(key, value);
-            return Add(item);
-        }
-
-        /// <summary>
-        /// Adds a value for the specified key and region to the cache.
-        /// <para>
-        /// The <c>Add</c> method will <b>not</b> be successful if the specified
-        /// <paramref name="key"/> already exists within the cache!
-        /// </para>
-        /// <para>
-        /// With <paramref name="region"/> specified, the key will <b>not</b> be found in the global cache.
-        /// </para>
-        /// </summary>
-        /// <param name="key">The key being used to identify the item within the cache.</param>
-        /// <param name="value">The value which should be cached.</param>
-        /// <param name="region">The cache region.</param>
-        /// <returns>
-        /// <c>true</c> if the key was not already added to the cache, <c>false</c> otherwise.
-        /// </returns>
-        /// <exception cref="ArgumentNullException">
-        /// If the <paramref name="key"/>, <paramref name="value"/> or <paramref name="region"/> is null.
-        /// </exception>
-        public virtual bool Add(string key, TCacheValue value, string region)
-        {
-            // null checks are done within ctor of the item
-            var item = new CacheItem<TCacheValue>(key, region, value);
+            var item = new CacheItem<TKey, TValue>(key, value);
             return Add(item);
         }
 
@@ -162,7 +109,7 @@ namespace CacheManager.Core.Internal
         /// <exception cref="ArgumentNullException">
         /// If the <paramref name="item"/> or the item's key or value is null.
         /// </exception>
-        public virtual bool Add(CacheItem<TCacheValue> item)
+        public virtual bool Add(CacheItem<TKey, TValue> item)
         {
             NotNull(item, nameof(item));
 
@@ -170,16 +117,9 @@ namespace CacheManager.Core.Internal
         }
 
         /// <summary>
-        /// Clears this cache, removing all items in the base cache and all regions.
+        /// Clears this cache, removing all items in the base cache.
         /// </summary>
         public abstract void Clear();
-
-        /// <summary>
-        /// Clears the cache region, removing all items from the specified <paramref name="region"/> only.
-        /// </summary>
-        /// <param name="region">The cache region.</param>
-        /// <exception cref="ArgumentNullException">If the <paramref name="region"/> is null.</exception>
-        public abstract void ClearRegion(string region);
 
         /// <summary>
         /// Performs application-defined tasks associated with freeing, releasing, or resetting
@@ -192,10 +132,7 @@ namespace CacheManager.Core.Internal
         }
 
         /// <inheritdoc />
-        public abstract bool Exists(string key);
-
-        /// <inheritdoc />
-        public abstract bool Exists(string key, string region);
+        public abstract bool Exists(TKey key);
 
         /// <summary>
         /// Gets a value for the specified key.
@@ -204,79 +141,16 @@ namespace CacheManager.Core.Internal
         /// <returns>The value being stored in the cache for the given <paramref name="key"/>.</returns>
         /// <exception cref="ArgumentNullException">If the <paramref name="key"/> is null.</exception>
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1716:IdentifiersShouldNotMatchKeywords", MessageId = "Get", Justification = "Maybe at some point.")]
-        public virtual TCacheValue Get(string key)
+        public virtual TValue Get(TKey key)
         {
             var item = GetCacheItem(key);
 
-            if (item != null && item.Key.Equals(key))
+            if (item != null)
             {
                 return item.Value;
             }
 
-            return default;
-        }
-
-        /// <summary>
-        /// Gets a value for the specified key and region.
-        /// </summary>
-        /// <param name="key">The key being used to identify the item within the cache.</param>
-        /// <param name="region">The cache region.</param>
-        /// <returns>
-        /// The value being stored in the cache for the given <paramref name="key"/> and <paramref name="region"/>.
-        /// </returns>
-        /// <exception cref="ArgumentNullException">
-        /// If the <paramref name="key"/> or <paramref name="region"/> is null.
-        /// </exception>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1716:IdentifiersShouldNotMatchKeywords", MessageId = "Get", Justification = "Maybe at some point.")]
-        public virtual TCacheValue Get(string key, string region)
-        {
-            var item = GetCacheItem(key, region);
-
-            if (item != null && item.Key.Equals(key) && item.Region != null && item.Region.Equals(region))
-            {
-                return item.Value;
-            }
-
-            return default;
-        }
-
-        /// <summary>
-        /// Gets a value for the specified key and will cast it to the specified type.
-        /// </summary>
-        /// <typeparam name="TOut">The type the value is converted and returned.</typeparam>
-        /// <param name="key">The key being used to identify the item within the cache.</param>
-        /// <returns>The value being stored in the cache for the given <paramref name="key"/>.</returns>
-        /// <exception cref="ArgumentNullException">If the <paramref name="key"/> is null.</exception>
-        /// <exception cref="InvalidCastException">
-        /// If no explicit cast is defined from <c>TCacheValue</c> to <c>TOut</c>.
-        /// </exception>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1716:IdentifiersShouldNotMatchKeywords", MessageId = "Get", Justification = "Maybe at some point.")]
-        public virtual TOut Get<TOut>(string key)
-        {
-            object value = Get(key);
-            return GetCasted<TOut>(value);
-        }
-
-        /// <summary>
-        /// Gets a value for the specified key and region and will cast it to the specified type.
-        /// </summary>
-        /// <typeparam name="TOut">The type the cached value should be converted to.</typeparam>
-        /// <param name="key">The key being used to identify the item within the cache.</param>
-        /// <param name="region">The cache region.</param>
-        /// <returns>
-        /// The value being stored in the cache for the given <paramref name="key"/> and <paramref name="region"/>.
-        /// </returns>
-        /// <exception cref="ArgumentNullException">
-        /// If the <paramref name="key"/> or <paramref name="region"/> is null.
-        /// </exception>
-        /// <exception cref="InvalidCastException">
-        /// If no explicit cast is defined from <c>TCacheValue</c> to <c>TOut</c>.
-        /// </exception>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1716:IdentifiersShouldNotMatchKeywords", MessageId = "Get", Justification = "Maybe at some point.")]
-        public virtual TOut Get<TOut>(string key, string region)
-        {
-            object value = Get(key, region);
-            return GetCasted<TOut>(value);
+            throw new KeyNotFoundException("The given key was not present in the cache.");
         }
 
         /// <summary>
@@ -285,28 +159,11 @@ namespace CacheManager.Core.Internal
         /// <param name="key">The key being used to identify the item within the cache.</param>
         /// <returns>The <c>CacheItem</c>.</returns>
         /// <exception cref="ArgumentNullException">If the <paramref name="key"/> is null.</exception>
-        public virtual CacheItem<TCacheValue> GetCacheItem(string key)
+        public virtual CacheItem<TKey, TValue> GetCacheItem(TKey key)
         {
-            NotNullOrWhiteSpace(key, nameof(key));
+            NotNull(key, nameof(key));
 
             return GetCacheItemInternal(key);
-        }
-
-        /// <summary>
-        /// Gets the <c>CacheItem</c> for the specified key and region.
-        /// </summary>
-        /// <param name="key">The key being used to identify the item within the cache.</param>
-        /// <param name="region">The cache region.</param>
-        /// <returns>The <c>CacheItem</c>.</returns>
-        /// <exception cref="ArgumentNullException">
-        /// If the <paramref name="key"/> or <paramref name="region"/> is null.
-        /// </exception>
-        public virtual CacheItem<TCacheValue> GetCacheItem(string key, string region)
-        {
-            NotNullOrWhiteSpace(key, nameof(key));
-            NotNullOrWhiteSpace(region, nameof(region));
-
-            return GetCacheItemInternal(key, region);
         }
 
         /// <summary>
@@ -321,31 +178,9 @@ namespace CacheManager.Core.Internal
         /// <exception cref="ArgumentNullException">
         /// If the <paramref name="key"/> or <paramref name="value"/> is null.
         /// </exception>
-        public virtual void Put(string key, TCacheValue value)
+        public virtual void Put(TKey key, TValue value)
         {
-            var item = new CacheItem<TCacheValue>(key, value);
-            Put(item);
-        }
-
-        /// <summary>
-        /// Puts a value for the specified key and region into the cache.
-        /// <para>
-        /// If the <paramref name="key"/> already exists within the cache, the existing value will
-        /// be replaced with the new <paramref name="value"/>.
-        /// </para>
-        /// <para>
-        /// With <paramref name="region"/> specified, the key will <b>not</b> be found in the global cache.
-        /// </para>
-        /// </summary>
-        /// <param name="key">The key being used to identify the item within the cache.</param>
-        /// <param name="value">The value which should be cached.</param>
-        /// <param name="region">The cache region.</param>
-        /// <exception cref="ArgumentNullException">
-        /// If the <paramref name="key"/>, <paramref name="value"/> or <paramref name="region"/> is null.
-        /// </exception>
-        public virtual void Put(string key, TCacheValue value, string region)
-        {
-            var item = new CacheItem<TCacheValue>(key, region, value);
+            var item = new CacheItem<TKey, TValue>(key, value);
             Put(item);
         }
 
@@ -364,7 +199,7 @@ namespace CacheManager.Core.Internal
         /// <exception cref="ArgumentNullException">
         /// If the <paramref name="item"/> or the item's key or value is null.
         /// </exception>
-        public virtual void Put(CacheItem<TCacheValue> item)
+        public virtual void Put(CacheItem<TKey, TValue> item)
         {
             NotNull(item, nameof(item));
 
@@ -379,30 +214,11 @@ namespace CacheManager.Core.Internal
         /// <c>true</c> if the key was found and removed from the cache, <c>false</c> otherwise.
         /// </returns>
         /// <exception cref="ArgumentNullException">If the <paramref name="key"/> is null.</exception>
-        public virtual bool Remove(string key)
+        public virtual bool Remove(TKey key)
         {
-            NotNullOrWhiteSpace(key, nameof(key));
+            NotNull(key, nameof(key));
 
             return RemoveInternal(key);
-        }
-
-        /// <summary>
-        /// Removes a value from the cache for the specified key and region.
-        /// </summary>
-        /// <param name="key">The key being used to identify the item within the cache.</param>
-        /// <param name="region">The cache region.</param>
-        /// <returns>
-        /// <c>true</c> if the key was found and removed from the cache, <c>false</c> otherwise.
-        /// </returns>
-        /// <exception cref="ArgumentNullException">
-        /// If the <paramref name="key"/> or <paramref name="region"/> is null.
-        /// </exception>
-        public virtual bool Remove(string key, string region)
-        {
-            NotNullOrWhiteSpace(key, nameof(key));
-            NotNullOrWhiteSpace(region, nameof(region));
-
-            return RemoveInternal(key, region);
         }
 
         /// <summary>
@@ -412,13 +228,13 @@ namespace CacheManager.Core.Internal
         /// <returns>
         /// <c>true</c> if the key was not already added to the cache, <c>false</c> otherwise.
         /// </returns>
-        protected internal abstract bool AddInternal(CacheItem<TCacheValue> item);
+        protected internal abstract bool AddInternal(CacheItem<TKey, TValue> item);
 
         /// <summary>
         /// Puts a value into the cache.
         /// </summary>
         /// <param name="item">The <c>CacheItem</c> to be added to the cache.</param>
-        protected internal abstract void PutInternal(CacheItem<TCacheValue> item);
+        protected internal abstract void PutInternal(CacheItem<TKey, TValue> item);
 
         /// <summary>
         /// Releases unmanaged and - optionally - managed resources.
@@ -432,14 +248,8 @@ namespace CacheManager.Core.Internal
             Disposing = true;
             if (!Disposed)
             {
-                if (disposeManaged)
-                {
-                    // do not do anything
-                }
-
                 Disposed = true;
             }
-
             Disposing = false;
         }
 
@@ -448,15 +258,7 @@ namespace CacheManager.Core.Internal
         /// </summary>
         /// <param name="key">The key being used to identify the item within the cache.</param>
         /// <returns>The <c>CacheItem</c>.</returns>
-        protected abstract CacheItem<TCacheValue> GetCacheItemInternal(string key);
-
-        /// <summary>
-        /// Gets a <c>CacheItem</c> for the specified key and region.
-        /// </summary>
-        /// <param name="key">The key being used to identify the item within the cache.</param>
-        /// <param name="region">The cache region.</param>
-        /// <returns>The <c>CacheItem</c>.</returns>
-        protected abstract CacheItem<TCacheValue> GetCacheItemInternal(string key, string region);
+        protected abstract CacheItem<TKey, TValue> GetCacheItemInternal(TKey key);
 
         /// <summary>
         /// Removes a value from the cache for the specified key.
@@ -465,17 +267,7 @@ namespace CacheManager.Core.Internal
         /// <returns>
         /// <c>true</c> if the key was found and removed from the cache, <c>false</c> otherwise.
         /// </returns>
-        protected abstract bool RemoveInternal(string key);
-
-        /// <summary>
-        /// Removes a value from the cache for the specified key and region.
-        /// </summary>
-        /// <param name="key">The key being used to identify the item within the cache.</param>
-        /// <param name="region">The cache region.</param>
-        /// <returns>
-        /// <c>true</c> if the key was found and removed from the cache, <c>false</c> otherwise.
-        /// </returns>
-        protected abstract bool RemoveInternal(string key, string region);
+        protected abstract bool RemoveInternal(TKey key);
 
         /// <summary>
         /// Checks if the instance is disposed.
@@ -486,30 +278,6 @@ namespace CacheManager.Core.Internal
             if (Disposed)
             {
                 throw new ObjectDisposedException(GetType().Name);
-            }
-        }
-
-        /// <summary>
-        /// Casts the value to <c>TOut</c>.
-        /// </summary>
-        /// <typeparam name="TOut">The type.</typeparam>
-        /// <param name="value">The value.</param>
-        /// <returns>The casted value.</returns>
-        protected static TOut GetCasted<TOut>(object value)
-        {
-            if (value == null)
-            {
-                return default;
-            }
-
-            try
-            {
-                var changed = Convert.ChangeType(value, typeof(TOut), CultureInfo.InvariantCulture);
-                return changed == null ? (TOut)value : (TOut)changed;
-            }
-            catch
-            {
-                return (TOut)value;
             }
         }
     }

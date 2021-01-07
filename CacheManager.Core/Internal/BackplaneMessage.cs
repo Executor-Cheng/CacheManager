@@ -29,11 +29,6 @@ namespace CacheManager.Core.Internal
         Clear,
 
         /// <summary>
-        /// The clear region action.
-        /// </summary>
-        ClearRegion,
-
-        /// <summary>
         /// If the cache item has been removed.
         /// </summary>
         Removed
@@ -86,22 +81,16 @@ namespace CacheManager.Core.Internal
             Key = key;
         }
 
-        private BackplaneMessage(byte[] owner, BackplaneAction action, string key, string region)
-            : this(owner, action, key)
-        {
-            NotNullOrWhiteSpace(region, nameof(region));
+        //private BackplaneMessage(byte[] owner, BackplaneAction action, string key, string region)
+        //    : this(owner, action, key)
+        //{
+        //    NotNullOrWhiteSpace(region, nameof(region));
 
-            Region = region;
-        }
+        //    Region = region;
+        //}
 
         private BackplaneMessage(byte[] owner, BackplaneAction action, string key, CacheItemChangedEventAction changeAction)
             : this(owner, action, key)
-        {
-            ChangeAction = changeAction;
-        }
-
-        private BackplaneMessage(byte[] owner, BackplaneAction action, string key, string region, CacheItemChangedEventAction changeAction)
-            : this(owner, action, key, region)
         {
             ChangeAction = changeAction;
         }
@@ -125,12 +114,6 @@ namespace CacheManager.Core.Internal
         public byte[] OwnerIdentity { get; }
 
         /// <summary>
-        /// Gets or sets the region.
-        /// </summary>
-        /// <value>The region.</value>
-        public string Region { get; private set; }
-
-        /// <summary>
         /// Gets or sets the cache action.
         /// </summary>
         public CacheItemChangedEventAction ChangeAction { get; }
@@ -140,9 +123,8 @@ namespace CacheManager.Core.Internal
         {
             return Action switch
             {
-                Changed => $"{Action} {Region}:{Key} {ChangeAction}",
-                Removed => $"{Action} {Region}:{Key}",
-                ClearRegion => $"{Action} {Region}",
+                Changed => $"{Action} {Key} {ChangeAction}",
+                Removed => $"{Action} {Key}",
                 Clear => Action.ToString(),
                 _ => string.Empty,
             };
@@ -168,23 +150,13 @@ namespace CacheManager.Core.Internal
 
             return Action == objCast.Action
                 && Key == objCast.Key
-                && ChangeAction == objCast.ChangeAction
-                && Region == objCast.Region;
+                && ChangeAction == objCast.ChangeAction;
         }
 
         /// <inheritdoc />
         public override int GetHashCode()
         {
-            unchecked
-            {
-                var hash = 17;
-
-                hash = hash * 23 + Action.GetHashCode();
-                hash = hash * 23 + ChangeAction.GetHashCode();
-                hash = hash * 23 + (Region?.GetHashCode() ?? 17);
-                hash = hash * 23 + (Key?.GetHashCode() ?? 17);
-                return hash;
-            }
+            return HashCode.Combine(Action, ChangeAction, Key);
         }
 
         /// <summary>
@@ -198,40 +170,12 @@ namespace CacheManager.Core.Internal
             new BackplaneMessage(owner, Changed, key, changeAction);
 
         /// <summary>
-        /// Creates a new <see cref="BackplaneMessage"/> for the changed action.
-        /// </summary>
-        /// <param name="owner">The owner.</param>
-        /// <param name="key">The key.</param>
-        /// <param name="region">The region.</param>
-        /// <param name="changeAction">The cache change action.</param>
-        /// <returns>The new <see cref="BackplaneMessage"/> instance.</returns>
-        public static BackplaneMessage ForChanged(byte[] owner, string key, string region, CacheItemChangedEventAction changeAction) =>
-            new BackplaneMessage(owner, Changed, key, region, changeAction);
-
-        /// <summary>
         /// Creates a new <see cref="BackplaneMessage"/> for the clear action.
         /// </summary>
         /// <param name="owner">The owner.</param>
         /// <returns>The new <see cref="BackplaneMessage"/> instance.</returns>
         public static BackplaneMessage ForClear(byte[] owner) =>
             new BackplaneMessage(owner, Clear);
-
-        /// <summary>
-        /// Creates a new <see cref="BackplaneMessage"/> for the clear region action.
-        /// </summary>
-        /// <param name="owner">The owner.</param>
-        /// <param name="region">The region.</param>
-        /// <returns>The new <see cref="BackplaneMessage"/> instance.</returns>
-        /// <exception cref="System.ArgumentNullException">If region is null.</exception>
-        public static BackplaneMessage ForClearRegion(byte[] owner, string region)
-        {
-            NotNullOrWhiteSpace(region, nameof(region));
-
-            return new BackplaneMessage(owner, ClearRegion)
-            {
-                Region = region
-            };
-        }
 
         /// <summary>
         /// Creates a new <see cref="BackplaneMessage"/> for the removed action.
@@ -241,16 +185,6 @@ namespace CacheManager.Core.Internal
         /// <returns>The new <see cref="BackplaneMessage"/> instance.</returns>
         public static BackplaneMessage ForRemoved(byte[] owner, string key) =>
             new BackplaneMessage(owner, Removed, key);
-
-        /// <summary>
-        /// Creates a new <see cref="BackplaneMessage"/> for the removed action.
-        /// </summary>
-        /// <param name="owner">The owner.</param>
-        /// <param name="key">The key.</param>
-        /// <param name="region">The region.</param>
-        /// <returns>The new <see cref="BackplaneMessage"/> instance.</returns>
-        public static BackplaneMessage ForRemoved(byte[] owner, string key, string region) =>
-            new BackplaneMessage(owner, Removed, key, region);
 
         /// <summary>
         /// Serializes this instance.
@@ -289,37 +223,21 @@ namespace CacheManager.Core.Internal
             switch (message.Action)
             {
                 case Changed:
-                    writer.WriteByte((byte)message.ChangeAction);
-                    if (!string.IsNullOrEmpty(message.Region))
                     {
-                        writer.WriteByte(2);
-                        writer.WriteString(message.Region);
-                    }
-                    else
-                    {
+                        writer.WriteByte((byte)message.ChangeAction);
                         writer.WriteByte(1);
-                    }
-                    writer.WriteString(message.Key);
+                        writer.WriteString(message.Key);
 
-                    break;
+                        break;
+                    }
 
                 case Removed:
-                    if (!string.IsNullOrEmpty(message.Region))
-                    {
-                        writer.WriteByte(2);
-                        writer.WriteString(message.Region);
-                    }
-                    else
                     {
                         writer.WriteByte(1);
+                        writer.WriteString(message.Key);
+
+                        break;
                     }
-                    writer.WriteString(message.Key);
-
-                    break;
-
-                case ClearRegion:
-                    writer.WriteString(message.Region);
-                    break;
 
                 case Clear:
                     break;
@@ -372,25 +290,10 @@ namespace CacheManager.Core.Internal
             {
                 case Changed:
                     var changeAction = (CacheItemChangedEventAction)reader.ReadByte();
-                    if (reader.ReadByte() == 2)
-                    {
-                        var r = reader.ReadString();
-                        return ForChanged(owner, reader.ReadString(), r, changeAction);
-                    }
-
                     return ForChanged(owner, reader.ReadString(), changeAction);
 
                 case Removed:
-                    if (reader.ReadByte() == 2)
-                    {
-                        var r = reader.ReadString();
-                        return ForRemoved(owner, reader.ReadString(), r);
-                    }
-
                     return ForRemoved(owner, reader.ReadString());
-
-                case ClearRegion:
-                    return ForClearRegion(owner, reader.ReadString());
 
                 case Clear:
                     return ForClear(owner);
@@ -462,7 +365,6 @@ namespace CacheManager.Core.Internal
                 }
 
                 size += msg.Key?.Length * 4 ?? 0;
-                size += msg.Region?.Length * 4 ?? 0;
                 return size * 2;
             }
         }

@@ -47,11 +47,6 @@
         /// <summary>
         /// The number of clear calls.
         /// </summary>
-        ClearCalls,
-
-        /// <summary>
-        /// The number of clear region calls.
-        /// </summary>
-        ClearRegionCalls
+        ClearCalls
     }
 }

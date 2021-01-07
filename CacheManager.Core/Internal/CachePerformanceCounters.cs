@@ -7,7 +7,7 @@ namespace CacheManager.Core.Internal
     using System.Threading;
     using static CacheManager.Core.Utility.Guard;
 
-    internal class CachePerformanceCounters<T> : IDisposable
+    internal class CachePerformanceCounters<TKey, TValue> : IDisposable where TKey : notnull
     {
         private const string Category = ".NET CacheManager";
         private const string Entries = "Total cache items";
@@ -23,13 +23,13 @@ namespace CacheManager.Core.Internal
 
         private readonly Timer _counterTimer;
         private readonly string _instanceName = string.Empty;
-        private readonly CacheStats<T> _stats;
+        private readonly CacheStats<TKey, TValue> _stats;
         private readonly long[] _statsCounts;
         private PerformanceCounter[] _counters;
         private bool _enabled = true;
         private readonly object _updateLock = new object();
 
-        public CachePerformanceCounters(string cacheName, string handleName, CacheStats<T> stats)
+        public CachePerformanceCounters(string cacheName, string handleName, CacheStats<TKey, TValue> stats)
         {
             if (!OperatingSystem.IsWindows())
             {

@@ -3,30 +3,23 @@ using System;
 
 namespace CacheManager.Core
 {
-    public partial class BaseCacheManager<TCacheValue>
+    public partial class BaseCacheManager<TKey, TValue>
     {
         /// <inheritdoc />
-        public void Expire(string key, ExpirationMode mode, TimeSpan timeout)
-            => ExpireInternal(key, null, mode, timeout);
-
-        /// <inheritdoc />
-        public void Expire(string key, string region, ExpirationMode mode, TimeSpan timeout)
-            => ExpireInternal(key, region, mode, timeout);
-
-        private void ExpireInternal(string key, string region, ExpirationMode mode, TimeSpan timeout)
+        public void Expire(TKey key, ExpirationMode mode, TimeSpan timeout)
         {
             CheckDisposed();
 
-            var item = GetCacheItemInternal(key, region);
+            var item = GetCacheItemInternal(key);
             if (item == null)
             {
-                Logger.LogTrace("Expire: item not found for key {0}:{1}", key, region);
+                Logger.LogTrace($"Expire: item not found for key {key}");
                 return;
             }
 
             if (_logTrace)
             {
-                Logger.LogTrace("Expire [{0}] started.", item);
+                Logger.LogTrace($"Expire [{item}] started.");
             }
 
             if (mode == ExpirationMode.Absolute)
@@ -48,14 +41,14 @@ namespace CacheManager.Core
 
             if (_logTrace)
             {
-                Logger.LogTrace("Expire - Expiration of [{0}] has been modified. Using put to store the item...", item);
+                Logger.LogTrace($"Expire - Expiration of [{item}] has been modified. Using put to store the item...");
             }
 
             PutInternal(item);
         }
 
         /// <inheritdoc />
-        public void Expire(string key, DateTimeOffset absoluteExpiration)
+        public void Expire(TKey key, DateTimeOffset absoluteExpiration)
         {
             var timeout = absoluteExpiration.UtcDateTime - DateTime.UtcNow;
             if (timeout <= TimeSpan.Zero)
@@ -67,19 +60,7 @@ namespace CacheManager.Core
         }
 
         /// <inheritdoc />
-        public void Expire(string key, string region, DateTimeOffset absoluteExpiration)
-        {
-            var timeout = absoluteExpiration.UtcDateTime - DateTime.UtcNow;
-            if (timeout <= TimeSpan.Zero)
-            {
-                throw new ArgumentException("Expiration value must be greater than zero.", nameof(absoluteExpiration));
-            }
-
-            Expire(key, region, ExpirationMode.Absolute, timeout);
-        }
-
-        /// <inheritdoc />
-        public void Expire(string key, TimeSpan slidingExpiration)
+        public void Expire(TKey key, TimeSpan slidingExpiration)
         {
             if (slidingExpiration <= TimeSpan.Zero)
             {
@@ -90,26 +71,9 @@ namespace CacheManager.Core
         }
 
         /// <inheritdoc />
-        public void Expire(string key, string region, TimeSpan slidingExpiration)
-        {
-            if (slidingExpiration <= TimeSpan.Zero)
-            {
-                throw new ArgumentException("Expiration value must be greater than zero.", nameof(slidingExpiration));
-            }
-
-            Expire(key, region, ExpirationMode.Sliding, slidingExpiration);
-        }
-
-        /// <inheritdoc />
-        public void RemoveExpiration(string key)
+        public void RemoveExpiration(TKey key)
         {
             Expire(key, ExpirationMode.None, default);
-        }
-
-        /// <inheritdoc />
-        public void RemoveExpiration(string key, string region)
-        {
-            Expire(key, region, ExpirationMode.None, default);
         }
     }
 }

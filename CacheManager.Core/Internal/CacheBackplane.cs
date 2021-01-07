@@ -1,8 +1,23 @@
-﻿using System;
+﻿using CacheManager.Core.Configuration;
+using Microsoft.Extensions.Options;
+using System;
 using static CacheManager.Core.Utility.Guard;
 
 namespace CacheManager.Core.Internal
 {
+    public interface ICacheBackplane<TKey, TValue> : IDisposable where TKey : notnull
+    {
+        CacheManagerConfiguration<TKey, TValue> CacheConfiguration { get; }
+
+        event EventHandler<CacheItemChangedEventArgs<TKey>> Changed;
+        event EventHandler<EventArgs> Cleared;
+        event EventHandler<CacheItemEventArgs<TKey>> Removed;
+
+        void NotifyChange(TKey key, CacheItemChangedEventAction action);
+        void NotifyClear();
+        void NotifyRemove(TKey key);
+    }
+
     /// <summary>
     /// In CacheManager, a cache backplane is used to keep in process and distributed caches in
     /// sync. <br/> If the cache manager runs inside multiple nodes or applications accessing the
@@ -16,7 +31,7 @@ namespace CacheManager.Core.Internal
     /// The same mechanism will apply to any Update, Put, Remove, Clear or ClearRegion call of the cache.
     /// </para>
     /// </summary>
-    public abstract class CacheBackplane : IDisposable
+    public abstract class CacheBackplane<TKey, TValue> : ICacheBackplane<TKey, TValue> where TKey : notnull
     {
         /// <summary>
         /// Number of messages sent.
@@ -39,11 +54,10 @@ namespace CacheManager.Core.Internal
         /// </summary>
         /// <param name="configuration">The cache manager configuration.</param>
         /// <exception cref="System.ArgumentNullException">If configuration is null.</exception>
-        protected CacheBackplane(ICacheManagerConfiguration configuration)
+        protected CacheBackplane(IOptions<CacheManagerConfiguration<TKey, TValue>> configuration)
         {
             NotNull(configuration, nameof(configuration));
-            CacheConfiguration = configuration;
-            ConfigurationKey = configuration.BackplaneConfigurationKey;
+            CacheConfiguration = configuration.Value;
         }
 
         /// <summary>
@@ -58,22 +72,17 @@ namespace CacheManager.Core.Internal
         /// The event gets fired whenever a change message for a key comes in,
         /// which means, another client changed a key.
         /// </summary>
-        internal event EventHandler<CacheItemChangedEventArgs> Changed;
+        public event EventHandler<CacheItemChangedEventArgs<TKey>> Changed;
 
         /// <summary>
         /// The event gets fired whenever a cache clear message comes in.
         /// </summary>
-        internal event EventHandler<EventArgs> Cleared;
-
-        /// <summary>
-        /// The event gets fired whenever a clear region message comes in.
-        /// </summary>
-        internal event EventHandler<RegionEventArgs> ClearedRegion;
+        public event EventHandler<EventArgs> Cleared;
 
         /// <summary>
         /// The event gets fired whenever a removed message for a key comes in.
         /// </summary>
-        internal event EventHandler<CacheItemEventArgs> Removed;
+        public event EventHandler<CacheItemEventArgs<TKey>> Removed;
 
         /// <summary>
         /// Gets the cache configuration.
@@ -81,14 +90,7 @@ namespace CacheManager.Core.Internal
         /// <value>
         /// The cache configuration.
         /// </value>
-        public ICacheManagerConfiguration CacheConfiguration { get; }
-
-        /// <summary>
-        /// Gets the name of the configuration to be used.
-        /// <para>The key might be used to find cache vendor specific configuration.</para>
-        /// </summary>
-        /// <value>The configuration key.</value>
-        public string ConfigurationKey { get; }
+        public CacheManagerConfiguration<TKey, TValue> CacheConfiguration { get; }
 
         /// <summary>
         /// Performs application-defined tasks associated with freeing, releasing, or resetting
@@ -106,15 +108,7 @@ namespace CacheManager.Core.Internal
         /// </summary>
         /// <param name="key">The key.</param>
         /// <param name="action">The action.</param>
-        public abstract void NotifyChange(string key, CacheItemChangedEventAction action);
-
-        /// <summary>
-        /// Notifies other cache clients about a changed cache key.
-        /// </summary>
-        /// <param name="key">The key.</param>
-        /// <param name="region">The region.</param>
-        /// <param name="action">The action.</param>
-        public abstract void NotifyChange(string key, string region, CacheItemChangedEventAction action);
+        public abstract void NotifyChange(TKey key, CacheItemChangedEventAction action);
 
         /// <summary>
         /// Notifies other cache clients about a cache clear.
@@ -122,43 +116,19 @@ namespace CacheManager.Core.Internal
         public abstract void NotifyClear();
 
         /// <summary>
-        /// Notifies other cache clients about a cache clear region call.
-        /// </summary>
-        /// <param name="region">The region.</param>
-        public abstract void NotifyClearRegion(string region);
-
-        /// <summary>
         /// Notifies other cache clients about a removed cache key.
         /// </summary>
         /// <param name="key">The key.</param>
-        public abstract void NotifyRemove(string key);
-
-        /// <summary>
-        /// Notifies other cache clients about a removed cache key.
-        /// </summary>
-        /// <param name="key">The key.</param>
-        /// <param name="region">The region.</param>
-        public abstract void NotifyRemove(string key, string region);
+        public abstract void NotifyRemove(TKey key);
 
         /// <summary>
         /// Sends a changed message for the given <paramref name="key"/>.
         /// </summary>
         /// <param name="key">The key.</param>
         /// <param name="action">The action.</param>
-        protected internal void TriggerChanged(string key, CacheItemChangedEventAction action)
+        protected internal void TriggerChanged(TKey key, CacheItemChangedEventAction action)
         {
-            Changed?.Invoke(this, new CacheItemChangedEventArgs(key, action));
-        }
-
-        /// <summary>
-        /// Sends a changed message for the given <paramref name="key"/> in <paramref name="region"/>.
-        /// </summary>
-        /// <param name="key">The key.</param>
-        /// <param name="region">The region.</param>
-        /// <param name="action">The action.</param>
-        protected internal void TriggerChanged(string key, string region, CacheItemChangedEventAction action)
-        {
-            Changed?.Invoke(this, new CacheItemChangedEventArgs(key, region, action));
+            Changed?.Invoke(this, new CacheItemChangedEventArgs<TKey>(key, action));
         }
 
         /// <summary>
@@ -170,31 +140,12 @@ namespace CacheManager.Core.Internal
         }
 
         /// <summary>
-        /// Sends a region cleared message for the given <paramref name="region"/>.
-        /// </summary>
-        /// <param name="region">The region.</param>
-        protected internal void TriggerClearedRegion(string region)
-        {
-            ClearedRegion?.Invoke(this, new RegionEventArgs(region));
-        }
-
-        /// <summary>
         /// Sends a removed message for the given <paramref name="key"/>.
         /// </summary>
         /// <param name="key">The key</param>
-        protected internal void TriggerRemoved(string key)
+        protected internal void TriggerRemoved(TKey key)
         {
-            Removed?.Invoke(this, new CacheItemEventArgs(key));
-        }
-
-        /// <summary>
-        /// Sends a removed message for the given <paramref name="key"/> in <paramref name="region"/>.
-        /// </summary>
-        /// <param name="key">The key.</param>
-        /// <param name="region">The region.</param>
-        protected internal void TriggerRemoved(string key, string region)
-        {
-            Removed?.Invoke(this, new CacheItemEventArgs(key, region));
+            Removed?.Invoke(this, new CacheItemEventArgs<TKey>(key));
         }
 
         /// <summary>
@@ -210,89 +161,38 @@ namespace CacheManager.Core.Internal
     }
 
     /// <summary>
-    /// Arguments for the region cleared event
-    /// </summary>
-    internal class RegionEventArgs : EventArgs
-    {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="RegionEventArgs" /> class.
-        /// </summary>
-        /// <param name="region">The region.</param>
-        public RegionEventArgs(string region)
-        {
-            NotNull(region, nameof(region));
-            Region = region;
-        }
-
-        /// <summary>
-        /// Gets the region which got cleared.
-        /// </summary>
-        /// <value>The region.</value>
-        public string Region { get; }
-    }
-
-    /// <summary>
     /// Base cache events arguments.
     /// </summary>
-    internal class CacheItemEventArgs : EventArgs
+    public class CacheItemEventArgs<TKey> : EventArgs where TKey : notnull
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="CacheItemEventArgs" /> class.
+        /// Initializes a new instance of the <see cref="CacheItemEventArgs{TKey}" /> class.
         /// </summary>
         /// <param name="key">The key.</param>
-        public CacheItemEventArgs(string key)
+        public CacheItemEventArgs(TKey key)
         {
             NotNull(key, nameof(key));
             Key = key;
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="CacheItemEventArgs" /> class.
-        /// </summary>
-        /// <param name="key">The key.</param>
-        /// <param name="region">The region.</param>
-        public CacheItemEventArgs(string key, string region)
-            : this(key)
-        {
-            NotNull(region, nameof(region));
-            Region = region;
-        }
-
-        /// <summary>
         /// Gets the key.
         /// </summary>
-        public string Key { get; }
-
-        /// <summary>
-        /// Gets the region.
-        /// </summary>
-        public string Region { get; }
+        public TKey Key { get; }
     }
 
     /// <summary>
     /// Arguments for cache change events.
     /// </summary>
-    internal class CacheItemChangedEventArgs : CacheItemEventArgs
+    public class CacheItemChangedEventArgs<TKey> : CacheItemEventArgs<TKey> where TKey : notnull
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="CacheItemChangedEventArgs" /> class.
+        /// Initializes a new instance of the <see cref="CacheItemChangedEventArgs{TKey}" /> class.
         /// </summary>
         /// <param name="key">The key.</param>
         /// <param name="action">The cache action.</param>
-        public CacheItemChangedEventArgs(string key, CacheItemChangedEventAction action)
+        public CacheItemChangedEventArgs(TKey key, CacheItemChangedEventAction action)
             : base(key)
-        {
-            Action = action;
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="CacheItemChangedEventArgs" /> class.
-        /// </summary>
-        /// <param name="key">The key.</param>
-        /// <param name="region">The region.</param>
-        /// <param name="action">The cache action.</param>
-        public CacheItemChangedEventArgs(string key, string region, CacheItemChangedEventAction action)
-            : base(key, region)
         {
             Action = action;
         }

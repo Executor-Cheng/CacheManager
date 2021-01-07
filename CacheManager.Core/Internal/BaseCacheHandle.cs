@@ -1,17 +1,34 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using CacheManager.Core.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System;
 using static CacheManager.Core.Utility.Guard;
 
 namespace CacheManager.Core.Internal
 {
+    public interface IBaseCacheHandle<TKey, TValue> : ICache<TKey, TValue> where TKey : notnull
+    {
+        CacheHandleConfiguration Configuration { get; }
+
+        int Count { get; }
+
+        bool IsDistributedCache { get; }
+
+        CacheStats<TKey, TValue> Stats { get; }
+
+        event EventHandler<CacheItemRemovedEventArgs<TKey>> OnCacheSpecificRemove;
+
+        UpdateItemResult<TKey, TValue> Update(TKey key, Func<TValue, TValue> updateValue, int maxRetries);
+    }
+
     /// <summary>
     /// The <c>BaseCacheHandle</c> implements all the logic which might be common for all the cache
     /// handles. It abstracts the <see cref="ICache{T}"/> interface and defines new properties and
     /// methods the implementer must use.
     /// <para>Actually it is not advisable to not use <see cref="BaseCacheHandle{T}"/>.</para>
     /// </summary>
-    /// <typeparam name="TCacheValue">The type of the cache value.</typeparam>
-    public abstract class BaseCacheHandle<TCacheValue> : BaseCache<TCacheValue>, IDisposable
+    /// <typeparam name="TValue">The type of the cache value.</typeparam>
+    public abstract class BaseCacheHandle<TKey, TValue> : BaseCache<TKey, TValue>, IBaseCacheHandle<TKey, TValue> where TKey : notnull
     {
         private readonly object _updateLock = new object();
 
@@ -24,16 +41,15 @@ namespace CacheManager.Core.Internal
         /// If <paramref name="managerConfiguration"/> or <paramref name="configuration"/> are null.
         /// </exception>
         /// <exception cref="System.ArgumentException">If <paramref name="configuration"/> name is empty.</exception>
-        protected BaseCacheHandle(ICacheManagerConfiguration managerConfiguration, CacheHandleConfiguration configuration)
+        protected BaseCacheHandle(IOptions<CacheManagerConfiguration<TKey, TValue>> managerConfiguration,
+                                  IOptions<CacheHandleConfiguration> configuration)
         {
-            NotNull(configuration, nameof(configuration));
-            NotNull(managerConfiguration, nameof(managerConfiguration));
-            NotNullOrWhiteSpace(configuration.Name, nameof(configuration.Name));
+            NotNullOrWhiteSpace(configuration.Value.Name, nameof(configuration.Value.Name));
 
-            Configuration = configuration;
+            Configuration = configuration.Value;
 
-            Stats = new CacheStats<TCacheValue>(
-                managerConfiguration.Name,
+            Stats = new CacheStats<TKey, TValue>(
+                managerConfiguration.Value.Name,
                 Configuration.Name,
                 Configuration.EnableStatistics,
                 Configuration.EnablePerformanceCounters);
@@ -51,13 +67,13 @@ namespace CacheManager.Core.Internal
         /// </remarks>
         public virtual bool IsDistributedCache { get { return false; } }
 
-        internal event EventHandler<CacheItemRemovedEventArgs> OnCacheSpecificRemove;
+        public event EventHandler<CacheItemRemovedEventArgs<TKey>> OnCacheSpecificRemove;
 
         /// <summary>
         /// Gets the cache handle configuration.
         /// </summary>
         /// <value>The configuration.</value>
-        public CacheHandleConfiguration Configuration { get; }
+        public virtual CacheHandleConfiguration Configuration { get; }
 
         /// <summary>
         /// Gets the number of items the cache handle currently maintains.
@@ -69,7 +85,7 @@ namespace CacheManager.Core.Internal
         /// Gets the cache stats object.
         /// </summary>
         /// <value>The stats.</value>
-        public virtual CacheStats<TCacheValue> Stats { get; }
+        public virtual CacheStats<TKey, TValue> Stats { get; }
 
         /// <summary>
         /// Updates an existing key in the cache.
@@ -97,7 +113,7 @@ namespace CacheManager.Core.Internal
         /// If the cache does not use a distributed cache system. Update is doing exactly the same
         /// as Get plus Put.
         /// </remarks>
-        public virtual UpdateItemResult<TCacheValue> Update(string key, Func<TCacheValue, TCacheValue> updateValue, int maxRetries)
+        public virtual UpdateItemResult<TKey, TValue> Update(TKey key, Func<TValue, TValue> updateValue, int maxRetries)
         {
             NotNull(updateValue, nameof(updateValue));
             CheckDisposed();
@@ -107,71 +123,17 @@ namespace CacheManager.Core.Internal
                 var original = GetCacheItem(key);
                 if (original == null)
                 {
-                    return UpdateItemResult.ForItemDidNotExist<TCacheValue>();
+                    return UpdateItemResult.ForItemDidNotExist<TKey, TValue>();
                 }
 
                 var newValue = updateValue(original.Value);
 
                 if (newValue == null)
                 {
-                    return UpdateItemResult.ForFactoryReturnedNull<TCacheValue>();
+                    return UpdateItemResult.ForFactoryReturnedNull<TKey, TValue>();
                 }
 
                 var newItem = original.WithValue(newValue);
-                newItem.LastAccessedUtc = DateTime.UtcNow;
-                Put(newItem);
-                return UpdateItemResult.ForSuccess(newItem);
-            }
-        }
-
-        /// <summary>
-        /// Updates an existing key in the cache.
-        /// <para>
-        /// The cache manager will make sure the update will always happen on the most recent version.
-        /// </para>
-        /// <para>
-        /// If version conflicts occur, if for example multiple cache clients try to write the same
-        /// key, and during the update process, someone else changed the value for the key, the
-        /// cache manager will retry the operation.
-        /// </para>
-        /// <para>
-        /// The <paramref name="updateValue"/> function will get invoked on each retry with the most
-        /// recent value which is stored in cache.
-        /// </para>
-        /// </summary>
-        /// <param name="key">The key to update.</param>
-        /// <param name="region">The cache region.</param>
-        /// <param name="updateValue">The function to perform the update.</param>
-        /// <param name="maxRetries">The number of tries.</param>
-        /// <returns>The update result which is interpreted by the cache manager.</returns>
-        /// <exception cref="System.ArgumentNullException">
-        /// If <paramref name="key"/>, <paramref name="region"/> or <paramref name="updateValue"/> is null.
-        /// </exception>
-        /// <remarks>
-        /// If the cache does not use a distributed cache system. Update is doing exactly the same
-        /// as Get plus Put.
-        /// </remarks>
-        public virtual UpdateItemResult<TCacheValue> Update(string key, string region, Func<TCacheValue, TCacheValue> updateValue, int maxRetries)
-        {
-            NotNull(updateValue, nameof(updateValue));
-            CheckDisposed();
-
-            lock (_updateLock)
-            {
-                var original = GetCacheItem(key, region);
-                if (original == null)
-                {
-                    return UpdateItemResult.ForItemDidNotExist<TCacheValue>();
-                }
-
-                var newValue = updateValue(original.Value);
-                if (newValue == null)
-                {
-                    return UpdateItemResult.ForFactoryReturnedNull<TCacheValue>();
-                }
-
-                var newItem = original.WithValue(newValue);
-
                 newItem.LastAccessedUtc = DateTime.UtcNow;
                 Put(newItem);
                 return UpdateItemResult.ForSuccess(newItem);
@@ -185,7 +147,7 @@ namespace CacheManager.Core.Internal
         /// <returns>
         /// <c>true</c> if the key was not already added to the cache, <c>false</c> otherwise.
         /// </returns>
-        protected internal override bool AddInternal(CacheItem<TCacheValue> item)
+        protected internal override bool AddInternal(CacheItem<TKey, TValue> item)
         {
             CheckDisposed();
             item = GetItemExpiration(item);
@@ -197,7 +159,7 @@ namespace CacheManager.Core.Internal
         /// with the new value. If the item doesn't exist, the item will be added to the cache.
         /// </summary>
         /// <param name="item">The <c>CacheItem</c> to be added to the cache.</param>
-        protected internal override void PutInternal(CacheItem<TCacheValue> item)
+        protected internal override void PutInternal(CacheItem<TKey, TValue> item)
         {
             CheckDisposed();
             item = GetItemExpiration(item);
@@ -213,17 +175,17 @@ namespace CacheManager.Core.Internal
         /// <param name="reason">The reason.</param>
         /// <param name="value">The original cache value. The value might be null if the underlying cache system doesn't support returning the value on eviction.</param>
         /// <exception cref="ArgumentNullException">If <paramref name="key"/> is null.</exception>
-        protected void TriggerCacheSpecificRemove(string key, string region, CacheItemRemovedReason reason, object value)
+        protected void TriggerCacheSpecificRemove(TKey key, CacheItemRemovedReason reason, object value)
         {
-            NotNullOrWhiteSpace(key, nameof(key));
+            NotNull(key, nameof(key));
 
             if (Logger.IsEnabled(LogLevel.Debug))
             {
-                Logger.LogDebug("'{0}' triggered remove '{1}:{2}' because '{3}'.", Configuration.Name, region, key, reason);
+                Logger.LogDebug($"'{ Configuration.Name}' triggered remove '{key}' because '{reason}'.");
             }
 
             // internal remove event, we don't know the level at this point => emit 0
-            OnCacheSpecificRemove?.Invoke(this, new CacheItemRemovedEventArgs(key, region, reason, value, 0));
+            OnCacheSpecificRemove?.Invoke(this, new CacheItemRemovedEventArgs<TKey>(key, reason, value, 0));
         }
 
         /// <summary>
@@ -233,7 +195,7 @@ namespace CacheManager.Core.Internal
         /// <returns>
         /// <c>true</c> if the key was not already added to the cache, <c>false</c> otherwise.
         /// </returns>
-        protected abstract bool AddInternalPrepared(CacheItem<TCacheValue> item);
+        protected abstract bool AddInternalPrepared(CacheItem<TKey, TValue> item);
 
         /// <summary>
         /// Performs application-defined tasks associated with freeing, releasing, or resetting
@@ -259,7 +221,7 @@ namespace CacheManager.Core.Internal
         /// <exception cref="System.InvalidOperationException">
         /// If expiration mode is defined without timeout.
         /// </exception>
-        protected virtual CacheItem<TCacheValue> GetItemExpiration(CacheItem<TCacheValue> item)
+        protected virtual CacheItem<TKey, TValue> GetItemExpiration(CacheItem<TKey, TValue> item)
         {
             NotNull(item, nameof(item));
 
@@ -299,6 +261,6 @@ namespace CacheManager.Core.Internal
         /// with the new value. If the item doesn't exist, the item will be added to the cache.
         /// </summary>
         /// <param name="item">The <c>CacheItem</c> to be added to the cache.</param>
-        protected abstract void PutInternalPrepared(CacheItem<TCacheValue> item);
+        protected abstract void PutInternalPrepared(CacheItem<TKey, TValue> item);
     }
 }

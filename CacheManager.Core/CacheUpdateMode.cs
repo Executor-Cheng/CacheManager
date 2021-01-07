@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace CacheManager.Core
+﻿namespace CacheManager.Core
 {
     /// <summary>
     /// Defines the possible update modes of the cache manager.

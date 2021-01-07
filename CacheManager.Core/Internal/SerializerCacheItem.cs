@@ -1,7 +1,6 @@
-﻿using System;
-using System.Linq;
+﻿using CacheManager.Core.Utility;
+using System;
 using System.Runtime.Serialization;
-using CacheManager.Core.Utility;
 
 namespace CacheManager.Core.Internal
 {
@@ -9,25 +8,25 @@ namespace CacheManager.Core.Internal
     /// Simple converter contract used by the serializer cache item. Serializers will use that to convert back to
     /// The <see cref="CacheItem{T}"/>.
     /// </summary>
-    public interface ICacheItemConverter
+    public interface ICacheItemConverter<TKey, TValue>
     {
         /// <summary>
         /// Converts the current instance to a <see cref="CacheItem{T}"/>.
         /// The returned item must return the orignial created and last accessed date!
         /// </summary>
-        /// <typeparam name="TTarget">The type.</typeparam>
+        /// <typeparam name="TValue">The type.</typeparam>
         /// <returns>The cache item.</returns>
-        CacheItem<TTarget> ToCacheItem<TTarget>();
+        CacheItem<TKey, TValue> ToCacheItem();
     }
 
     /// <summary>
     /// Basic abstraction for serializers to work with cache items.
     /// </summary>
-    /// <typeparam name="T">The type.</typeparam>
+    /// <typeparam name="TValue">The type.</typeparam>
 
     [Serializable]
     [DataContract]
-    public abstract class SerializerCacheItem<T> : ICacheItemConverter
+    public abstract class SerializerCacheItem<TKey, TValue> : ICacheItemConverter<TKey, TValue> where TKey : notnull
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="SerializerCacheItem{T}"/> class.
@@ -41,7 +40,7 @@ namespace CacheManager.Core.Internal
         /// </summary>
         /// <param name="properties">The actual properties.</param>
         /// <param name="value">The cache value.</param>
-        public SerializerCacheItem(ICacheItemProperties properties, object value)
+        public SerializerCacheItem(ICacheItemProperties<TKey> properties, object value)
             : this()
         {
             Guard.NotNull(properties, nameof(properties));
@@ -52,10 +51,9 @@ namespace CacheManager.Core.Internal
             ExpirationTimeout = properties.ExpirationTimeout.TotalMilliseconds;
             Key = properties.Key;
             LastAccessedUtc = properties.LastAccessedUtc.Ticks;
-            Region = properties.Region;
             UsesExpirationDefaults = properties.UsesExpirationDefaults;
             ValueType = properties.ValueType.AssemblyQualifiedName;
-            Value = (T)value;
+            Value = (TValue)value;
         }
 
         /// <summary>
@@ -82,7 +80,7 @@ namespace CacheManager.Core.Internal
         /// Gets or sets the key.
         /// </summary>
         [DataMember]
-        public abstract string Key { get; set; }
+        public abstract TKey Key { get; set; }
 
         /// <summary>
         /// Gets or sets the last accessed utc date in ticks.
@@ -90,12 +88,6 @@ namespace CacheManager.Core.Internal
         /// </summary>
         [DataMember]
         public abstract long LastAccessedUtc { get; set; }
-
-        /// <summary>
-        /// Gets or sets the region.
-        /// </summary>
-        [DataMember]
-        public abstract string Region { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether the default expiration should be used.
@@ -113,14 +105,12 @@ namespace CacheManager.Core.Internal
         /// Gets or sets the value.
         /// </summary>
         [DataMember]
-        public abstract T Value { get; set; }
+        public abstract TValue Value { get; set; }
 
         /// <inheritdoc/>
-        public CacheItem<TTarget> ToCacheItem<TTarget>()
+        public CacheItem<TKey, TValue> ToCacheItem()
         {
-            var item = string.IsNullOrWhiteSpace(Region) ?
-                new CacheItem<TTarget>(Key, (TTarget)(object)Value) :
-                new CacheItem<TTarget>(Key, Region, (TTarget)(object)Value);
+            var item = new CacheItem<TKey, TValue>(Key, (TValue)(object)Value);
 
             // resetting expiration in case the serializer actually stores serialization properties (Redis does for example).
             if (!UsesExpirationDefaults)

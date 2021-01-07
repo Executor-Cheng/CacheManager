@@ -38,51 +38,51 @@ namespace CacheManager.Core.Internal
         /// Creates a new instance of the <see cref="UpdateItemResult{TCacheValue}"/> class with
         /// properties typical for the case where the cache item did not exist for an update operation.
         /// </summary>
-        /// <typeparam name="TCacheValue">The type of the cache value.</typeparam>
+        /// <typeparam name="TValue">The type of the cache value.</typeparam>
         /// <returns>The item result.</returns>
-        public static UpdateItemResult<TCacheValue> ForItemDidNotExist<TCacheValue>() =>
-            new UpdateItemResult<TCacheValue>(null, UpdateItemResultState.ItemDidNotExist, false, 1);
+        public static UpdateItemResult<TKey, TValue> ForItemDidNotExist<TKey, TValue>() where TKey : notnull =>
+            new UpdateItemResult<TKey, TValue>(null, UpdateItemResultState.ItemDidNotExist, false, 1);
 
         /// <summary>
         /// Creates a new instance of the <see cref="UpdateItemResult{TCacheValue}"/> indicating that the
         /// cache value factory returned null instead of a valid value.
         /// </summary>
-        /// <typeparam name="TCacheValue">The type of the cache value.</typeparam>
+        /// <typeparam name="TValue">The type of the cache value.</typeparam>
         /// <returns>The item result.</returns>
-        public static UpdateItemResult<TCacheValue> ForFactoryReturnedNull<TCacheValue>() =>
-            new UpdateItemResult<TCacheValue>(null, UpdateItemResultState.FactoryReturnedNull, false, 1);
+        public static UpdateItemResult<TKey, TValue> ForFactoryReturnedNull<TKey, TValue>() where TKey : notnull =>
+            new UpdateItemResult<TKey, TValue>(null, UpdateItemResultState.FactoryReturnedNull, false, 1);
 
         /// <summary>
         /// Creates a new instance of the <see cref="UpdateItemResult{TCacheValue}"/> class with
         /// properties typical for a successful update operation.
         /// </summary>
-        /// <typeparam name="TCacheValue">The type of the cache value.</typeparam>
+        /// <typeparam name="TValue">The type of the cache value.</typeparam>
         /// <param name="value">The value.</param>
         /// <param name="conflictOccurred">Set to <c>true</c> if a conflict occurred.</param>
         /// <param name="triesNeeded">The tries needed.</param>
         /// <returns>The item result.</returns>
-        public static UpdateItemResult<TCacheValue> ForSuccess<TCacheValue>(CacheItem<TCacheValue> value, bool conflictOccurred = false, int triesNeeded = 1) =>
-            new UpdateItemResult<TCacheValue>(value, UpdateItemResultState.Success, conflictOccurred, triesNeeded);
+        public static UpdateItemResult<TKey, TValue> ForSuccess<TKey, TValue>(CacheItem<TKey, TValue> value, bool conflictOccurred = false, int triesNeeded = 1) where TKey : notnull =>
+            new UpdateItemResult<TKey, TValue>(value, UpdateItemResultState.Success, conflictOccurred, triesNeeded);
 
         /// <summary>
         /// Creates a new instance of the <see cref="UpdateItemResult{TCacheValue}"/> class with
         /// properties typical for an update operation which failed because it exceeded the limit of tries.
         /// </summary>
-        /// <typeparam name="TCacheValue">The type of the cache value.</typeparam>
+        /// <typeparam name="TValue">The type of the cache value.</typeparam>
         /// <param name="triesNeeded">The tries needed.</param>
         /// <returns>The item result.</returns>
-        public static UpdateItemResult<TCacheValue> ForTooManyRetries<TCacheValue>(int triesNeeded) =>
-            new UpdateItemResult<TCacheValue>(null, UpdateItemResultState.TooManyRetries, true, triesNeeded);
+        public static UpdateItemResult<TKey, TValue> ForTooManyRetries<TKey, TValue>(int triesNeeded) where TKey : notnull =>
+            new UpdateItemResult<TKey, TValue>(null, UpdateItemResultState.TooManyRetries, true, triesNeeded);
     }
 
     /// <summary>
     /// Used by cache handle implementations to let the cache manager know what happened during an
     /// update operation.
     /// </summary>
-    /// <typeparam name="TCacheValue">The type of the cache value.</typeparam>
-    public class UpdateItemResult<TCacheValue>
+    /// <typeparam name="TValue">The type of the cache value.</typeparam>
+    public class UpdateItemResult<TKey, TValue> where TKey : notnull
     {
-        internal UpdateItemResult(CacheItem<TCacheValue> value, UpdateItemResultState state, bool conflictOccurred, int triesNeeded)
+        internal UpdateItemResult(CacheItem<TKey, TValue> value, UpdateItemResultState state, bool conflictOccurred, int triesNeeded)
         {
             if (triesNeeded == 0)
             {
@@ -111,7 +111,7 @@ namespace CacheManager.Core.Internal
         /// Gets the updated value.
         /// </summary>
         /// <value>The updated value.</value>
-        public CacheItem<TCacheValue> Value { get; }
+        public CacheItem<TKey, TValue> Value { get; }
 
         /// <summary>
         /// Gets a value indicating whether a version conflict occurred during an update operation.
