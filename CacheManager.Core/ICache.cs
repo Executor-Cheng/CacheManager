@@ -67,7 +67,7 @@ namespace CacheManager.Core
         /// <exception cref="ArgumentNullException">
         /// If the <paramref name="item"/> or the item's key or value is null.
         /// </exception>
-        bool Add(CacheItem<TKey, TValue> item);
+        bool Add(ICacheItem<TKey, TValue> item);
 
         /// <summary>
         /// Clears this cache, removing all items in the base cache and all regions.
@@ -98,7 +98,7 @@ namespace CacheManager.Core
         /// <param name="key">The key being used to identify the item within the cache.</param>
         /// <returns>The <c>CacheItem</c>.</returns>
         /// <exception cref="ArgumentNullException">If the <paramref name="key"/> is null.</exception>
-        CacheItem<TKey, TValue> GetCacheItem(TKey key);
+        ICacheItem<TKey, TValue> GetCacheItem(TKey key);
 
         /// <summary>
         /// Puts a value for the specified key into the cache.
@@ -129,7 +129,7 @@ namespace CacheManager.Core
         /// <exception cref="ArgumentNullException">
         /// If the <paramref name="item"/> or the item's key or value is null.
         /// </exception>
-        void Put(CacheItem<TKey, TValue> item);
+        void Put(ICacheItem<TKey, TValue> item);
 
         /// <summary>
         /// Removes a value from the cache for the specified key.

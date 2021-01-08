@@ -4,12 +4,85 @@ using static CacheManager.Core.Utility.Guard;
 
 namespace CacheManager.Core
 {
+    public interface ICacheItem<TKey, TValue> : ICacheItemProperties<TKey> where TKey : notnull
+    {
+        /// <summary>
+        /// Gets the cache value.
+        /// </summary>
+        /// <value>The cache value.</value>
+        TValue Value { get; }
+
+        ICacheItem<TKey, TValue> WithExpiration(ExpirationMode mode, TimeSpan timeout, bool usesHandleDefault = true);
+
+        /// <summary>
+        /// Creates a copy of the current cache item and sets a new absolute expiration date.
+        /// This method doesn't change the state of the item in the cache. Use <c>Put</c> or similar methods to update the cache with the returned copy of the item.
+        /// </summary>
+        /// <remarks>We do not clone the cache item or value.</remarks>
+        /// <param name="absoluteExpiration">The absolute expiration date.</param>
+        /// <returns>The new instance of the cache item.</returns>
+        ICacheItem<TKey, TValue> WithAbsoluteExpiration(DateTimeOffset absoluteExpiration);
+
+        /// <summary>
+        /// Creates a copy of the current cache item and sets a new absolute expiration date.
+        /// This method doesn't change the state of the item in the cache. Use <c>Put</c> or similar methods to update the cache with the returned copy of the item.
+        /// </summary>
+        /// <remarks>We do not clone the cache item or value.</remarks>
+        /// <param name="absoluteExpiration">The absolute expiration date.</param>
+        /// <returns>The new instance of the cache item.</returns>
+        ICacheItem<TKey, TValue> WithAbsoluteExpiration(TimeSpan absoluteExpiration);
+
+        /// <summary>
+        /// Creates a copy of the current cache item with a given created date.
+        /// This method doesn't change the state of the item in the cache. Use <c>Put</c> or similar methods to update the cache with the returned copy of the item.
+        /// </summary>
+        /// <remarks>We do not clone the cache item or value.</remarks>
+        /// <param name="created">The new created date.</param>
+        /// <returns>The new instance of the cache item.</returns>
+        ICacheItem<TKey, TValue> WithCreated(DateTime created);
+
+        /// <summary>
+        /// Creates a copy of the current cache item with no explicit expiration, instructing the cache to use the default defined in the cache handle configuration.
+        /// This method doesn't change the state of the item in the cache. Use <c>Put</c> or similar methods to update the cache with the returned copy of the item.
+        /// </summary>
+        /// <remarks>We do not clone the cache item or value.</remarks>
+        /// <returns>The new instance of the cache item.</returns>
+        ICacheItem<TKey, TValue> WithDefaultExpiration();
+
+        /// <summary>
+        /// Creates a copy of the current cache item without expiration. Can be used to update the cache
+        /// and remove any previously configured expiration of the item.
+        /// This method doesn't change the state of the item in the cache. Use <c>Put</c> or similar methods to update the cache with the returned copy of the item.
+        /// </summary>
+        /// <remarks>We do not clone the cache item or value.</remarks>
+        /// <returns>The new instance of the cache item.</returns>
+        ICacheItem<TKey, TValue> WithNoExpiration();
+
+        /// <summary>
+        /// Creates a copy of the current cache item and sets a new sliding expiration value.
+        /// This method doesn't change the state of the item in the cache. Use <c>Put</c> or similar methods to update the cache with the returned copy of the item.
+        /// </summary>
+        /// <remarks>We do not clone the cache item or value.</remarks>
+        /// <param name="slidingExpiration">The sliding expiration value.</param>
+        /// <returns>The new instance of the cache item.</returns>
+        ICacheItem<TKey, TValue> WithSlidingExpiration(TimeSpan slidingExpiration);
+
+        /// <summary>
+        /// Creates a copy of the current cache item with new value.
+        /// This method doesn't change the state of the item in the cache. Use <c>Put</c> or similar methods to update the cache with the returned copy of the item.
+        /// </summary>
+        /// <remarks>We do not clone the cache item or value.</remarks>
+        /// <param name="value">The new value.</param>
+        /// <returns>The new instance of the cache item.</returns>
+        ICacheItem<TKey, TValue> WithValue(TValue value);
+    }
+
     /// <summary>
     /// The item which will be stored in the cache holding the cache value and additional
     /// information needed by the cache handles and manager.
     /// </summary>
     /// <typeparam name="TValue">The type of the cache value.</typeparam>
-    public class CacheItem<TKey, TValue> : ICacheItemProperties<TKey> where TKey : notnull
+    public class CacheItem<TKey, TValue> : ICacheItem<TKey, TValue> where TKey : notnull
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="CacheItem{T}"/> class.
@@ -79,11 +152,13 @@ namespace CacheManager.Core
             LastAccessedUtc = lastAccessed ?? DateTime.UtcNow;
         }
 
-        /// <summary>
-        /// Gets a value indicating whether the item is logically expired or not.
-        /// Depending on the cache vendor, the item might still live in the cache although
-        /// according to the expiration mode and timeout, the item is already expired.
-        /// </summary>
+        /// <inheritdoc/>
+        public TKey Key { get; }
+
+        /// <inheritdoc/>
+        public TValue Value { get; }
+
+        /// <inheritdoc/>
         public bool IsExpired
         {
             get
@@ -104,52 +179,19 @@ namespace CacheManager.Core
             }
         }
 
-        /// <summary>
-        /// Gets the creation date of the cache item.
-        /// </summary>
-        /// <value>The creation date.</value>
+        /// <inheritdoc/>
         public DateTime CreatedUtc { get; }
 
-        /// <summary>
-        /// Gets the expiration mode.
-        /// </summary>
-        /// <value>The expiration mode.</value>
+        /// <inheritdoc/>
         public ExpirationMode ExpirationMode { get; }
 
-        /// <summary>
-        /// Gets the expiration timeout.
-        /// </summary>
-        /// <value>The expiration timeout.</value>
+        /// <inheritdoc/>
         public TimeSpan ExpirationTimeout { get; }
 
-        /// <summary>
-        /// Gets the cache key.
-        /// </summary>
-        /// <value>The cache key.</value>
-        public TKey Key { get; }
-
-        /// <summary>
-        /// Gets or sets the last accessed date of the cache item.
-        /// </summary>
-        /// <value>The last accessed date.</value>
+        /// <inheritdoc/>
         public DateTime LastAccessedUtc { get; set; }
 
-        /// <summary>
-        /// Gets the cache value.
-        /// </summary>
-        /// <value>The cache value.</value>
-        public TValue Value { get; }
-
-        /// <summary>
-        /// Gets the type of the cache value.
-        /// <para>This might be used for serialization and deserialization.</para>
-        /// </summary>
-        /// <value>The type of the cache value.</value>
-        public Type ValueType => typeof(TValue);
-
-        /// <summary>
-        /// Gets a value indicating whether the cache item uses the cache handle's configured expiration.
-        /// </summary>
+        /// <inheritdoc/>
         public bool UsesExpirationDefaults { get; } = true;
 
         /// <inheritdoc />
@@ -158,17 +200,12 @@ namespace CacheManager.Core
             return $"{Key}, exp:{ExpirationMode} {ExpirationTimeout}, lastAccess:{LastAccessedUtc}";
         }
 
-        internal CacheItem<TKey, TValue> WithExpiration(ExpirationMode mode, TimeSpan timeout, bool usesHandleDefault = true) =>
+        /// <inheritdoc />
+        public ICacheItem<TKey, TValue> WithExpiration(ExpirationMode mode, TimeSpan timeout, bool usesHandleDefault = true) =>
             new CacheItem<TKey, TValue>(Key, Value, mode, timeout, mode == ExpirationMode.Absolute ? DateTime.UtcNow : CreatedUtc, LastAccessedUtc, usesHandleDefault);
 
-        /// <summary>
-        /// Creates a copy of the current cache item and sets a new absolute expiration date.
-        /// This method doesn't change the state of the item in the cache. Use <c>Put</c> or similar methods to update the cache with the returned copy of the item.
-        /// </summary>
-        /// <remarks>We do not clone the cache item or value.</remarks>
-        /// <param name="absoluteExpiration">The absolute expiration date.</param>
-        /// <returns>The new instance of the cache item.</returns>
-        public CacheItem<TKey, TValue> WithAbsoluteExpiration(DateTimeOffset absoluteExpiration)
+        /// <inheritdoc />
+        public ICacheItem<TKey, TValue> WithAbsoluteExpiration(DateTimeOffset absoluteExpiration)
         {
             var timeout = absoluteExpiration - DateTimeOffset.UtcNow;
             if (timeout <= TimeSpan.Zero)
@@ -179,14 +216,8 @@ namespace CacheManager.Core
             return WithExpiration(ExpirationMode.Absolute, timeout, false);
         }
 
-        /// <summary>
-        /// Creates a copy of the current cache item and sets a new absolute expiration date.
-        /// This method doesn't change the state of the item in the cache. Use <c>Put</c> or similar methods to update the cache with the returned copy of the item.
-        /// </summary>
-        /// <remarks>We do not clone the cache item or value.</remarks>
-        /// <param name="absoluteExpiration">The absolute expiration date.</param>
-        /// <returns>The new instance of the cache item.</returns>
-        public CacheItem<TKey, TValue> WithAbsoluteExpiration(TimeSpan absoluteExpiration)
+        /// <inheritdoc />
+        public ICacheItem<TKey, TValue> WithAbsoluteExpiration(TimeSpan absoluteExpiration)
         {
             if (absoluteExpiration <= TimeSpan.Zero)
             {
@@ -196,14 +227,8 @@ namespace CacheManager.Core
             return WithExpiration(ExpirationMode.Absolute, absoluteExpiration, false);
         }
 
-        /// <summary>
-        /// Creates a copy of the current cache item and sets a new sliding expiration value.
-        /// This method doesn't change the state of the item in the cache. Use <c>Put</c> or similar methods to update the cache with the returned copy of the item.
-        /// </summary>
-        /// <remarks>We do not clone the cache item or value.</remarks>
-        /// <param name="slidingExpiration">The sliding expiration value.</param>
-        /// <returns>The new instance of the cache item.</returns>
-        public CacheItem<TKey, TValue> WithSlidingExpiration(TimeSpan slidingExpiration)
+        /// <inheritdoc />
+        public ICacheItem<TKey, TValue> WithSlidingExpiration(TimeSpan slidingExpiration)
         {
             if (slidingExpiration <= TimeSpan.Zero)
             {
@@ -213,43 +238,20 @@ namespace CacheManager.Core
             return WithExpiration(ExpirationMode.Sliding, slidingExpiration, false);
         }
 
-        /// <summary>
-        /// Creates a copy of the current cache item without expiration. Can be used to update the cache
-        /// and remove any previously configured expiration of the item.
-        /// This method doesn't change the state of the item in the cache. Use <c>Put</c> or similar methods to update the cache with the returned copy of the item.
-        /// </summary>
-        /// <remarks>We do not clone the cache item or value.</remarks>
-        /// <returns>The new instance of the cache item.</returns>
-        public CacheItem<TKey, TValue> WithNoExpiration() =>
+        /// <inheritdoc />
+        public ICacheItem<TKey, TValue> WithNoExpiration() =>
             new CacheItem<TKey, TValue>(Key, Value, ExpirationMode.None, TimeSpan.Zero, CreatedUtc, LastAccessedUtc, false);
 
-        /// <summary>
-        /// Creates a copy of the current cache item with no explicit expiration, instructing the cache to use the default defined in the cache handle configuration.
-        /// This method doesn't change the state of the item in the cache. Use <c>Put</c> or similar methods to update the cache with the returned copy of the item.
-        /// </summary>
-        /// <remarks>We do not clone the cache item or value.</remarks>
-        /// <returns>The new instance of the cache item.</returns>
-        public CacheItem<TKey, TValue> WithDefaultExpiration() =>
+        /// <inheritdoc />
+        public ICacheItem<TKey, TValue> WithDefaultExpiration() =>
             new CacheItem<TKey, TValue>(Key, Value, ExpirationMode.Default, TimeSpan.Zero, CreatedUtc, LastAccessedUtc, true);
 
-        /// <summary>
-        /// Creates a copy of the current cache item with new value.
-        /// This method doesn't change the state of the item in the cache. Use <c>Put</c> or similar methods to update the cache with the returned copy of the item.
-        /// </summary>
-        /// <remarks>We do not clone the cache item or value.</remarks>
-        /// <param name="value">The new value.</param>
-        /// <returns>The new instance of the cache item.</returns>
-        public CacheItem<TKey, TValue> WithValue(TValue value) =>
+        /// <inheritdoc />
+        public ICacheItem<TKey, TValue> WithValue(TValue value) =>
             new CacheItem<TKey, TValue>(Key, value, ExpirationMode, ExpirationTimeout, CreatedUtc, LastAccessedUtc, UsesExpirationDefaults);
 
-        /// <summary>
-        /// Creates a copy of the current cache item with a given created date.
-        /// This method doesn't change the state of the item in the cache. Use <c>Put</c> or similar methods to update the cache with the returned copy of the item.
-        /// </summary>
-        /// <remarks>We do not clone the cache item or value.</remarks>
-        /// <param name="created">The new created date.</param>
-        /// <returns>The new instance of the cache item.</returns>
-        public CacheItem<TKey, TValue> WithCreated(DateTime created) =>
+        /// <inheritdoc />
+        public ICacheItem<TKey, TValue> WithCreated(DateTime created) =>
             new CacheItem<TKey, TValue>(Key, Value, ExpirationMode, ExpirationTimeout, created, LastAccessedUtc, UsesExpirationDefaults);
     }
 }

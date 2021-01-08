@@ -9,7 +9,7 @@ namespace CacheManager.Core
         public TValue GetOrAdd(TKey key, TValue value)
         {
             NotNull(key, nameof(key));
-            if (TryGetOrAddInternal(key, value, out CacheItem<TKey, TValue> ritemsult))
+            if (TryGetOrAddInternal(key, value, out ICacheItem<TKey, TValue> ritemsult))
             {
                 return ritemsult.Value;
             }
@@ -21,7 +21,7 @@ namespace CacheManager.Core
         {
             NotNull(key, nameof(key));
             NotNull(valueFactory, nameof(valueFactory));
-            if (TryGetOrAddInternal(key, k => new CacheItem<TKey, TValue>(k, valueFactory(k)), out CacheItem<TKey, TValue> item))
+            if (TryGetOrAddInternal(key, k => new CacheItem<TKey, TValue>(k, valueFactory(k)), out ICacheItem<TKey, TValue> item))
             {
                 return item.Value;
             }
@@ -29,12 +29,12 @@ namespace CacheManager.Core
         }
 
         /// <inheritdoc />
-        public CacheItem<TKey, TValue> GetOrAdd(TKey key, Func<TKey, CacheItem<TKey, TValue>> valueFactory)
+        public ICacheItem<TKey, TValue> GetOrAdd(TKey key, Func<TKey, ICacheItem<TKey, TValue>> valueFactory)
         {
             NotNull(key, nameof(key));
             NotNull(valueFactory, nameof(valueFactory));
 
-            if (TryGetOrAddInternal(key, valueFactory, out CacheItem<TKey, TValue> item))
+            if (TryGetOrAddInternal(key, valueFactory, out ICacheItem<TKey, TValue> item))
             {
                 return item;
             }
@@ -58,7 +58,7 @@ namespace CacheManager.Core
         }
 
         /// <inheritdoc />
-        public bool TryGetOrAdd(TKey key, Func<TKey, CacheItem<TKey, TValue>> valueFactory, out CacheItem<TKey, TValue> item)
+        public bool TryGetOrAdd(TKey key, Func<TKey, ICacheItem<TKey, TValue>> valueFactory, out ICacheItem<TKey, TValue> item)
         {
             NotNull(key, nameof(key));
             NotNull(valueFactory, nameof(valueFactory));
@@ -66,9 +66,9 @@ namespace CacheManager.Core
             return TryGetOrAddInternal(key, valueFactory, out item);
         }
 
-        private bool TryGetOrAddInternal(TKey key, TValue value, out CacheItem<TKey, TValue> item)
+        private bool TryGetOrAddInternal(TKey key, TValue value, out ICacheItem<TKey, TValue> item)
         {
-            CacheItem<TKey, TValue> newItem = null;
+            ICacheItem<TKey, TValue> newItem = null;
             var tries = 0;
             do
             {
@@ -82,7 +82,7 @@ namespace CacheManager.Core
                 // changed logic to invoke the factory only once in case of retries
                 if (newItem == null)
                 {
-                    newItem = new CacheItem<TKey, TValue>(key, value);
+                    newItem = CreateCacheItem(key, value);
                 }
 
                 if (AddInternal(newItem))
@@ -95,9 +95,9 @@ namespace CacheManager.Core
             return false;
         }
 
-        private bool TryGetOrAddInternal(TKey key, Func<TKey, CacheItem<TKey, TValue>> valueFactory, out CacheItem<TKey, TValue> item)
+        private bool TryGetOrAddInternal(TKey key, Func<TKey, ICacheItem<TKey, TValue>> valueFactory, out ICacheItem<TKey, TValue> item)
         {
-            CacheItem<TKey, TValue> newItem = null;
+            ICacheItem<TKey, TValue> newItem = null;
             var tries = 0;
             do
             {

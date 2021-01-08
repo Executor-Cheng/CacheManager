@@ -127,7 +127,7 @@ namespace CacheManager.Core.Internal
         /// </summary>
         /// <param name="item">The item.</param>
         /// <exception cref="System.ArgumentNullException">If item is null.</exception>
-        public void OnAdd(CacheItem<TKey, TValue> item)
+        public void OnAdd(ICacheItem<TKey, TValue> item)
         {
             if (!_isStatsEnabled)
             {
@@ -203,7 +203,7 @@ namespace CacheManager.Core.Internal
         /// <param name="item">The item.</param>
         /// <param name="itemAdded">If <c>true</c> the item didn't exist and has been added.</param>
         /// <exception cref="System.ArgumentNullException">If item is null.</exception>
-        public void OnPut(CacheItem<TKey, TValue> item, bool itemAdded)
+        public void OnPut(ICacheItem<TKey, TValue> item, bool itemAdded)
         {
             if (!_isStatsEnabled)
             {

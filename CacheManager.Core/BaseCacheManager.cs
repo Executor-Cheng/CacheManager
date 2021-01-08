@@ -214,18 +214,17 @@ namespace CacheManager.Core
         /// <returns>
         /// A <see cref="string" /> that represents this instance.
         /// </returns>
-        public override string ToString() =>
-            string.Format(CultureInfo.InvariantCulture, "Name: {0}, Handles: [{1}]", Name, string.Join(",", _cacheHandles.Select(p => p.GetType().Name)));
+        public override string ToString() => $"Name: {Name}, Handles: [{string.Join(", ", _cacheHandles.Select(p => p.GetType().Name))}]";
 
         /// <inheritdoc />
-        protected internal override bool AddInternal(CacheItem<TKey, TValue> item)
+        protected internal override bool AddInternal(ICacheItem<TKey, TValue> item)
         {
             NotNull(item, nameof(item));
 
             CheckDisposed();
             if (_logTrace)
             {
-                Logger.LogTrace("Add [{0}] started.", item);
+                Logger.LogTrace($"Add [{item}] started.");
             }
 
             var handleIndex = _cacheHandles.Length - 1;
@@ -257,7 +256,7 @@ namespace CacheManager.Core
         }
 
         /// <inheritdoc />
-        protected internal override void PutInternal(CacheItem<TKey, TValue> item)
+        protected internal override void PutInternal(ICacheItem<TKey, TValue> item)
         {
             NotNull(item, nameof(item));
 
@@ -320,15 +319,15 @@ namespace CacheManager.Core
         }
 
         /// <inheritdoc />
-        protected override CacheItem<TKey, TValue> GetCacheItemInternal(TKey key)
+        protected override ICacheItem<TKey, TValue> GetCacheItemInternal(TKey key)
         {
             CheckDisposed();
 
-            CacheItem<TKey, TValue> cacheItem = null;
+            ICacheItem<TKey, TValue> cacheItem = null;
 
             if (_logTrace)
             {
-                Logger.LogTrace("Get [{1}] started.", key);
+                Logger.LogTrace($"Get [{key}] started.");
             }
 
             for (var handleIndex = 0; handleIndex < _cacheHandles.Length; handleIndex++)
@@ -377,7 +376,7 @@ namespace CacheManager.Core
 
             if (_logTrace)
             {
-                Logger.LogTrace("Removing [{0}].", key);
+                Logger.LogTrace($"Removing [{key}].");
             }
 
             foreach (var handle in _cacheHandles)
@@ -416,7 +415,7 @@ namespace CacheManager.Core
             return result;
         }
 
-        private static bool AddItemToHandle(CacheItem<TKey, TValue> item, IBaseCacheHandle<TKey, TValue> handle)
+        private static bool AddItemToHandle(ICacheItem<TKey, TValue> item, IBaseCacheHandle<TKey, TValue> handle)
         {
             if (handle.Add(item))
             {
@@ -450,10 +449,7 @@ namespace CacheManager.Core
         {
             if (Logger.IsEnabled(LogLevel.Debug))
             {
-                Logger.LogDebug(
-                    "Evicting '{0}' from handle '{2}'.",
-                    key,
-                    handle.Configuration.Name);
+                Logger.LogDebug($"Evicting '{key}' from handle '{handle.Configuration.Name}'.");
             }
 
             bool result = handle.Remove(key);
@@ -463,7 +459,7 @@ namespace CacheManager.Core
             }
         }
 
-        private void AddToHandles(CacheItem<TKey, TValue> item, int foundIndex)
+        private void AddToHandles(ICacheItem<TKey, TValue> item, int foundIndex)
         {
             if (_logTrace)
             {
@@ -490,7 +486,7 @@ namespace CacheManager.Core
             }
         }
 
-        private void AddToHandlesBelow(CacheItem<TKey, TValue> item, int foundIndex)
+        private void AddToHandlesBelow(ICacheItem<TKey, TValue> item, int foundIndex)
         {
             if (item == null)
             {

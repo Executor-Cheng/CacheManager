@@ -171,7 +171,7 @@ namespace CacheManager.Core
         /// <exception cref="System.ArgumentNullException">
         /// If <paramref name="addItem"/> or <paramref name="updateValue"/> are null.
         /// </exception>
-        TValue AddOrUpdate(CacheItem<TKey, TValue> addItem, Func<TValue, TValue> updateValue);
+        TValue AddOrUpdate(ICacheItem<TKey, TValue> addItem, Func<TValue, TValue> updateValue);
 
         /// <summary>
         /// Adds an item to the cache or, if the item already exists, updates the item using the
@@ -202,7 +202,7 @@ namespace CacheManager.Core
         /// <exception cref="System.ArgumentNullException">
         /// If <paramref name="addItem"/> or <paramref name="updateValue"/> is null.
         /// </exception>
-        TValue AddOrUpdate(CacheItem<TKey, TValue> addItem, Func<TValue, TValue> updateValue, int maxRetries);
+        TValue AddOrUpdate(ICacheItem<TKey, TValue> addItem, Func<TValue, TValue> updateValue, int maxRetries);
 
         /// <summary>
         /// Returns an existing item or adds the item to the cache if it does not exist.
@@ -238,7 +238,7 @@ namespace CacheManager.Core
         /// <exception cref="ArgumentException">
         /// If either <paramref name="key"/> or <paramref name="valueFactory"/> is null.
         /// </exception>
-        CacheItem<TKey, TValue> GetOrAdd(TKey key, Func<TKey, CacheItem<TKey, TValue>> valueFactory);
+        ICacheItem<TKey, TValue> GetOrAdd(TKey key, Func<TKey, ICacheItem<TKey, TValue>> valueFactory);
 
         /// <summary>
         /// Tries to either retrieve an existing item or add the item to the cache if it does not exist.
@@ -263,7 +263,7 @@ namespace CacheManager.Core
         /// <exception cref="ArgumentException">
         /// If either <paramref name="key"/> or <paramref name="valueFactory"/> is null.
         /// </exception>
-        bool TryGetOrAdd(TKey key, Func<TKey, CacheItem<TKey, TValue>> valueFactory, out CacheItem<TKey, TValue> item);
+        bool TryGetOrAdd(TKey key, Func<TKey, ICacheItem<TKey, TValue>> valueFactory, out ICacheItem<TKey, TValue> item);
 
         /// <summary>
         /// Updates an existing key in the cache.

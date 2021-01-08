@@ -65,7 +65,7 @@ namespace CacheManager.Core.Internal
         /// For in-memory cache handles which are backplane source though, it would trigger a <c>Remove</c>.
         /// </para>
         /// </remarks>
-        public virtual bool IsDistributedCache { get { return false; } }
+        public virtual bool IsDistributedCache => false;
 
         public event EventHandler<CacheItemRemovedEventArgs<TKey>> OnCacheSpecificRemove;
 
@@ -147,7 +147,7 @@ namespace CacheManager.Core.Internal
         /// <returns>
         /// <c>true</c> if the key was not already added to the cache, <c>false</c> otherwise.
         /// </returns>
-        protected internal override bool AddInternal(CacheItem<TKey, TValue> item)
+        protected internal override bool AddInternal(ICacheItem<TKey, TValue> item)
         {
             CheckDisposed();
             item = GetItemExpiration(item);
@@ -159,7 +159,7 @@ namespace CacheManager.Core.Internal
         /// with the new value. If the item doesn't exist, the item will be added to the cache.
         /// </summary>
         /// <param name="item">The <c>CacheItem</c> to be added to the cache.</param>
-        protected internal override void PutInternal(CacheItem<TKey, TValue> item)
+        protected internal override void PutInternal(ICacheItem<TKey, TValue> item)
         {
             CheckDisposed();
             item = GetItemExpiration(item);
@@ -195,7 +195,7 @@ namespace CacheManager.Core.Internal
         /// <returns>
         /// <c>true</c> if the key was not already added to the cache, <c>false</c> otherwise.
         /// </returns>
-        protected abstract bool AddInternalPrepared(CacheItem<TKey, TValue> item);
+        protected abstract bool AddInternalPrepared(ICacheItem<TKey, TValue> item);
 
         /// <summary>
         /// Performs application-defined tasks associated with freeing, releasing, or resetting
@@ -221,7 +221,7 @@ namespace CacheManager.Core.Internal
         /// <exception cref="System.InvalidOperationException">
         /// If expiration mode is defined without timeout.
         /// </exception>
-        protected virtual CacheItem<TKey, TValue> GetItemExpiration(CacheItem<TKey, TValue> item)
+        protected virtual ICacheItem<TKey, TValue> GetItemExpiration(ICacheItem<TKey, TValue> item)
         {
             NotNull(item, nameof(item));
 
@@ -261,6 +261,6 @@ namespace CacheManager.Core.Internal
         /// with the new value. If the item doesn't exist, the item will be added to the cache.
         /// </summary>
         /// <param name="item">The <c>CacheItem</c> to be added to the cache.</param>
-        protected abstract void PutInternalPrepared(CacheItem<TKey, TValue> item);
+        protected abstract void PutInternalPrepared(ICacheItem<TKey, TValue> item);
     }
 }

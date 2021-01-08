@@ -1,7 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using static CacheManager.Core.Utility.Guard;
 
 namespace CacheManager.Core.Internal
@@ -87,7 +86,7 @@ namespace CacheManager.Core.Internal
         public virtual bool Add(TKey key, TValue value)
         {
             // null checks are done within ctor of the item
-            var item = new CacheItem<TKey, TValue>(key, value);
+            var item = CreateCacheItem(key, value);
             return Add(item);
         }
 
@@ -109,7 +108,7 @@ namespace CacheManager.Core.Internal
         /// <exception cref="ArgumentNullException">
         /// If the <paramref name="item"/> or the item's key or value is null.
         /// </exception>
-        public virtual bool Add(CacheItem<TKey, TValue> item)
+        public virtual bool Add(ICacheItem<TKey, TValue> item)
         {
             NotNull(item, nameof(item));
 
@@ -140,7 +139,6 @@ namespace CacheManager.Core.Internal
         /// <param name="key">The key being used to identify the item within the cache.</param>
         /// <returns>The value being stored in the cache for the given <paramref name="key"/>.</returns>
         /// <exception cref="ArgumentNullException">If the <paramref name="key"/> is null.</exception>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1716:IdentifiersShouldNotMatchKeywords", MessageId = "Get", Justification = "Maybe at some point.")]
         public virtual TValue Get(TKey key)
         {
             var item = GetCacheItem(key);
@@ -159,7 +157,7 @@ namespace CacheManager.Core.Internal
         /// <param name="key">The key being used to identify the item within the cache.</param>
         /// <returns>The <c>CacheItem</c>.</returns>
         /// <exception cref="ArgumentNullException">If the <paramref name="key"/> is null.</exception>
-        public virtual CacheItem<TKey, TValue> GetCacheItem(TKey key)
+        public virtual ICacheItem<TKey, TValue> GetCacheItem(TKey key)
         {
             NotNull(key, nameof(key));
 
@@ -180,7 +178,7 @@ namespace CacheManager.Core.Internal
         /// </exception>
         public virtual void Put(TKey key, TValue value)
         {
-            var item = new CacheItem<TKey, TValue>(key, value);
+            var item = CreateCacheItem(key, value);
             Put(item);
         }
 
@@ -199,7 +197,7 @@ namespace CacheManager.Core.Internal
         /// <exception cref="ArgumentNullException">
         /// If the <paramref name="item"/> or the item's key or value is null.
         /// </exception>
-        public virtual void Put(CacheItem<TKey, TValue> item)
+        public virtual void Put(ICacheItem<TKey, TValue> item)
         {
             NotNull(item, nameof(item));
 
@@ -228,13 +226,29 @@ namespace CacheManager.Core.Internal
         /// <returns>
         /// <c>true</c> if the key was not already added to the cache, <c>false</c> otherwise.
         /// </returns>
-        protected internal abstract bool AddInternal(CacheItem<TKey, TValue> item);
+        protected internal abstract bool AddInternal(ICacheItem<TKey, TValue> item);
 
         /// <summary>
         /// Puts a value into the cache.
         /// </summary>
         /// <param name="item">The <c>CacheItem</c> to be added to the cache.</param>
-        protected internal abstract void PutInternal(CacheItem<TKey, TValue> item);
+        protected internal abstract void PutInternal(ICacheItem<TKey, TValue> item);
+
+        /// <summary>
+        /// Gets a <c>CacheItem</c> for the specified key.
+        /// </summary>
+        /// <param name="key">The key being used to identify the item within the cache.</param>
+        /// <returns>The <c>CacheItem</c>.</returns>
+        protected abstract ICacheItem<TKey, TValue> GetCacheItemInternal(TKey key);
+
+        /// <summary>
+        /// Removes a value from the cache for the specified key.
+        /// </summary>
+        /// <param name="key">The key being used to identify the item within the cache.</param>
+        /// <returns>
+        /// <c>true</c> if the key was found and removed from the cache, <c>false</c> otherwise.
+        /// </returns>
+        protected abstract bool RemoveInternal(TKey key);
 
         /// <summary>
         /// Releases unmanaged and - optionally - managed resources.
@@ -254,22 +268,6 @@ namespace CacheManager.Core.Internal
         }
 
         /// <summary>
-        /// Gets a <c>CacheItem</c> for the specified key.
-        /// </summary>
-        /// <param name="key">The key being used to identify the item within the cache.</param>
-        /// <returns>The <c>CacheItem</c>.</returns>
-        protected abstract CacheItem<TKey, TValue> GetCacheItemInternal(TKey key);
-
-        /// <summary>
-        /// Removes a value from the cache for the specified key.
-        /// </summary>
-        /// <param name="key">The key being used to identify the item within the cache.</param>
-        /// <returns>
-        /// <c>true</c> if the key was found and removed from the cache, <c>false</c> otherwise.
-        /// </returns>
-        protected abstract bool RemoveInternal(TKey key);
-
-        /// <summary>
         /// Checks if the instance is disposed.
         /// </summary>
         /// <exception cref="ObjectDisposedException">If the instance is disposed.</exception>
@@ -279,6 +277,11 @@ namespace CacheManager.Core.Internal
             {
                 throw new ObjectDisposedException(GetType().Name);
             }
+        }
+
+        protected virtual ICacheItem<TKey, TValue> CreateCacheItem(TKey key, TValue value)
+        {
+            return new CacheItem<TKey, TValue>(key, value);
         }
     }
 }

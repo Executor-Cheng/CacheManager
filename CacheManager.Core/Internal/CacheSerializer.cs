@@ -32,23 +32,17 @@ namespace CacheManager.Core.Internal
         public abstract TValue Deserialize(byte[] data);
 
         /// <inheritdoc/>
-        public virtual byte[] SerializeCacheItem(CacheItem<TKey, TValue> value)
+        public virtual byte[] SerializeCacheItem(ICacheItem<TKey, TValue> value)
         {
             Guard.NotNull(value, nameof(value));
-            var item = CreateFromCacheItem(value);
-            return Serialize(item);
+            return Serialize(value.Value);
         }
 
         /// <inheritdoc/>
-        public virtual CacheItem<TKey, TValue> DeserializeCacheItem(byte[] value)
+        public virtual ICacheItem<TKey, TValue> DeserializeCacheItem(byte[] value)
         {
             var item = (ICacheItemConverter<TKey, TValue>)Deserialize(value);
             return item?.ToCacheItem();
-        }
-
-        private TValue CreateFromCacheItem(CacheItem<TKey, TValue> source)
-        {
-            return source.Value;
         }
     }
 }

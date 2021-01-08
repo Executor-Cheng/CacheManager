@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Threading;
 using static CacheManager.Core.Utility.Guard;
 
@@ -16,8 +17,9 @@ namespace CacheManager.Core.Internal
     {
         private const int ScanInterval = 5000;
         private readonly static Random _random = new Random();
-        private readonly ConcurrentDictionary<TKey, CacheItem<TKey, TValue>> _cache;
+        private readonly ConcurrentDictionary<TKey, ICacheItem<TKey, TValue>> _cache;
         private readonly Timer _timer;
+        private readonly ReaderWriterLockSlim _lock;
 
         private int _scanRunning;
 
@@ -33,8 +35,9 @@ namespace CacheManager.Core.Internal
             : base(managerConfiguration, configuration)
         {
             Logger = logger;
-            _cache = new ConcurrentDictionary<TKey, CacheItem<TKey, TValue>>();
+            _cache = new ConcurrentDictionary<TKey, ICacheItem<TKey, TValue>>();
             _timer = new Timer(TimerLoop, null, _random.Next(1000, ScanInterval), ScanInterval);
+            _lock = new ReaderWriterLockSlim();
         }
 
         /// <summary>
@@ -56,6 +59,7 @@ namespace CacheManager.Core.Internal
             if (disposeManaged)
             {
                 _timer.Dispose();
+                _lock.Dispose();
             }
             base.Dispose(disposeManaged);
         }
@@ -75,11 +79,19 @@ namespace CacheManager.Core.Internal
         /// <c>true</c> if the key was not already added to the cache, <c>false</c> otherwise.
         /// </returns>
         /// <exception cref="System.ArgumentNullException">If item is null.</exception>
-        protected override bool AddInternalPrepared(CacheItem<TKey, TValue> item)
+        protected override bool AddInternalPrepared(ICacheItem<TKey, TValue> item)
         {
             NotNull(item, nameof(item));
 
-            return _cache.TryAdd(item.Key, item);
+            _lock.EnterWriteLock();
+            try
+            {
+                return _cache.TryAdd(item.Key, item);
+            }
+            finally
+            {
+                _lock.ExitWriteLock();
+            }
         }
 
         /// <summary>
@@ -87,18 +99,28 @@ namespace CacheManager.Core.Internal
         /// </summary>
         /// <param name="key">The key being used to identify the item within the cache.</param>
         /// <returns>The <c>CacheItem</c>.</returns>
-        protected override CacheItem<TKey, TValue> GetCacheItemInternal(TKey key)
+        protected override ICacheItem<TKey, TValue> GetCacheItemInternal(TKey key)
         {
-            if (_cache.TryGetValue(key, out CacheItem<TKey, TValue> result))
+            _lock.EnterUpgradeableReadLock();
+            try
             {
-                if (result.ExpirationMode != ExpirationMode.None && IsExpired(result, DateTime.UtcNow))
+                if (_cache.TryGetValue(key, out ICacheItem<TKey, TValue> result))
                 {
-                    _cache.TryRemove(key, out CacheItem<TKey, TValue> _);
-                    TriggerCacheSpecificRemove(key, CacheItemRemovedReason.Expired, result.Value);
-                    return null;
+                    if (result.ExpirationMode != ExpirationMode.None && IsExpired(result, DateTime.UtcNow))
+                    {
+                        _lock.EnterWriteLock();
+                        _cache.TryRemove(new KeyValuePair<TKey, ICacheItem<TKey, TValue>>(key, result));
+                        _lock.ExitWriteLock();
+                        TriggerCacheSpecificRemove(key, CacheItemRemovedReason.Expired, result.Value);
+                        return null;
+                    }
                 }
+                return result;
             }
-            return result;
+            finally
+            {
+                _lock.ExitUpgradeableReadLock();
+            }
         }
 
         /// <summary>
@@ -107,11 +129,13 @@ namespace CacheManager.Core.Internal
         /// </summary>
         /// <param name="item">The <c>CacheItem</c> to be added to the cache.</param>
         /// <exception cref="System.ArgumentNullException">If item is null.</exception>
-        protected override void PutInternalPrepared(CacheItem<TKey, TValue> item)
+        protected override void PutInternalPrepared(ICacheItem<TKey, TValue> item)
         {
             NotNull(item, nameof(item));
 
+            _lock.EnterWriteLock();
             _cache[item.Key] = item;
+            _lock.ExitWriteLock();
         }
 
         /// <summary>
@@ -123,10 +147,18 @@ namespace CacheManager.Core.Internal
         /// </returns>
         protected override bool RemoveInternal(TKey key)
         {
-            return _cache.TryRemove(key, out CacheItem<TKey, TValue> _);
+            _lock.EnterWriteLock();
+            try
+            {
+                return _cache.TryRemove(key, out ICacheItem<TKey, TValue> _);
+            }
+            finally
+            {
+                _lock.ExitWriteLock();
+            }
         }
 
-        private static bool IsExpired(CacheItem<TKey, TValue> item, DateTime now)
+        private static bool IsExpired(ICacheItem<TKey, TValue> item, DateTime now)
         {
             return (item.ExpirationMode == ExpirationMode.Absolute && item.CreatedUtc.Add(item.ExpirationTimeout) < now) ||
                    (item.ExpirationMode == ExpirationMode.Sliding && item.LastAccessedUtc.Add(item.ExpirationTimeout) < now);

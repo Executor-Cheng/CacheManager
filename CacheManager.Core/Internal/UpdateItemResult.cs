@@ -61,7 +61,7 @@ namespace CacheManager.Core.Internal
         /// <param name="conflictOccurred">Set to <c>true</c> if a conflict occurred.</param>
         /// <param name="triesNeeded">The tries needed.</param>
         /// <returns>The item result.</returns>
-        public static UpdateItemResult<TKey, TValue> ForSuccess<TKey, TValue>(CacheItem<TKey, TValue> value, bool conflictOccurred = false, int triesNeeded = 1) where TKey : notnull =>
+        public static UpdateItemResult<TKey, TValue> ForSuccess<TKey, TValue>(ICacheItem<TKey, TValue> value, bool conflictOccurred = false, int triesNeeded = 1) where TKey : notnull =>
             new UpdateItemResult<TKey, TValue>(value, UpdateItemResultState.Success, conflictOccurred, triesNeeded);
 
         /// <summary>
@@ -82,7 +82,7 @@ namespace CacheManager.Core.Internal
     /// <typeparam name="TValue">The type of the cache value.</typeparam>
     public class UpdateItemResult<TKey, TValue> where TKey : notnull
     {
-        internal UpdateItemResult(CacheItem<TKey, TValue> value, UpdateItemResultState state, bool conflictOccurred, int triesNeeded)
+        internal UpdateItemResult(ICacheItem<TKey, TValue> value, UpdateItemResultState state, bool conflictOccurred, int triesNeeded)
         {
             if (triesNeeded == 0)
             {
@@ -111,7 +111,7 @@ namespace CacheManager.Core.Internal
         /// Gets the updated value.
         /// </summary>
         /// <value>The updated value.</value>
-        public CacheItem<TKey, TValue> Value { get; }
+        public ICacheItem<TKey, TValue> Value { get; }
 
         /// <summary>
         /// Gets a value indicating whether a version conflict occurred during an update operation.

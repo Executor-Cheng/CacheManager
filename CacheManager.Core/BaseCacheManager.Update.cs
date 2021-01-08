@@ -13,14 +13,14 @@ namespace CacheManager.Core
 
         /// <inheritdoc />
         public TValue AddOrUpdate(TKey key, TValue addValue, Func<TValue, TValue> updateValue, int maxRetries) =>
-            AddOrUpdate(new CacheItem<TKey, TValue>(key, addValue), updateValue, maxRetries);
+            AddOrUpdate(CreateCacheItem(key, addValue), updateValue, maxRetries);
 
         /// <inheritdoc />
-        public TValue AddOrUpdate(CacheItem<TKey, TValue> addItem, Func<TValue, TValue> updateValue) =>
+        public TValue AddOrUpdate(ICacheItem<TKey, TValue> addItem, Func<TValue, TValue> updateValue) =>
             AddOrUpdate(addItem, updateValue, Configuration.MaxRetries);
 
         /// <inheritdoc />
-        public TValue AddOrUpdate(CacheItem<TKey, TValue> addItem, Func<TValue, TValue> updateValue, int maxRetries)
+        public TValue AddOrUpdate(ICacheItem<TKey, TValue> addItem, Func<TValue, TValue> updateValue, int maxRetries)
         {
             NotNull(addItem, nameof(addItem));
             NotNull(updateValue, nameof(updateValue));
@@ -29,7 +29,7 @@ namespace CacheManager.Core
             return AddOrUpdateInternal(addItem, updateValue, maxRetries);
         }
 
-        private TValue AddOrUpdateInternal(CacheItem<TKey, TValue> item, Func<TValue, TValue> updateValue, int maxRetries)
+        private TValue AddOrUpdateInternal(ICacheItem<TKey, TValue> item, Func<TValue, TValue> updateValue, int maxRetries)
         {
             CheckDisposed();
             if (_logTrace)

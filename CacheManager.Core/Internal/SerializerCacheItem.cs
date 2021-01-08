@@ -16,7 +16,7 @@ namespace CacheManager.Core.Internal
         /// </summary>
         /// <typeparam name="TValue">The type.</typeparam>
         /// <returns>The cache item.</returns>
-        CacheItem<TKey, TValue> ToCacheItem();
+        ICacheItem<TKey, TValue> ToCacheItem();
     }
 
     /// <summary>
@@ -52,7 +52,6 @@ namespace CacheManager.Core.Internal
             Key = properties.Key;
             LastAccessedUtc = properties.LastAccessedUtc.Ticks;
             UsesExpirationDefaults = properties.UsesExpirationDefaults;
-            ValueType = properties.ValueType.AssemblyQualifiedName;
             Value = (TValue)value;
         }
 
@@ -96,21 +95,15 @@ namespace CacheManager.Core.Internal
         public abstract bool UsesExpirationDefaults { get; set; }
 
         /// <summary>
-        /// Gets or sets the value type.
-        /// </summary>
-        [DataMember]
-        public abstract string ValueType { get; set; }
-
-        /// <summary>
         /// Gets or sets the value.
         /// </summary>
         [DataMember]
         public abstract TValue Value { get; set; }
 
         /// <inheritdoc/>
-        public CacheItem<TKey, TValue> ToCacheItem()
+        public ICacheItem<TKey, TValue> ToCacheItem()
         {
-            var item = new CacheItem<TKey, TValue>(Key, (TValue)(object)Value);
+            ICacheItem<TKey, TValue> item = new CacheItem<TKey, TValue>(Key, Value);
 
             // resetting expiration in case the serializer actually stores serialization properties (Redis does for example).
             if (!UsesExpirationDefaults)

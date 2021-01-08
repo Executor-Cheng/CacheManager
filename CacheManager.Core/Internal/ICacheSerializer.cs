@@ -29,13 +29,13 @@
         /// </summary>
         /// <param name="value">The value to serialize.</param>
         /// <returns>The serialized result.</returns>
-        byte[] SerializeCacheItem(CacheItem<TKey, TValue> value);
+        byte[] SerializeCacheItem(ICacheItem<TKey, TValue> value);
 
         /// <summary>
         /// Deserializes the <paramref name="value"/> into a <see cref="CacheItem{T}"/>.
         /// </summary>
         /// <param name="value">The data to deserialize from.</param>
         /// <returns>The deserialized cache item.</returns>
-        CacheItem<TKey, TValue> DeserializeCacheItem(byte[] value);
+        ICacheItem<TKey, TValue> DeserializeCacheItem(byte[] value);
     }
 }

@@ -8,6 +8,19 @@ namespace CacheManager.Core.Internal
     public interface ICacheItemProperties<TKey> where TKey : notnull
     {
         /// <summary>
+        /// Gets the cache key.
+        /// </summary>
+        /// <value>The cache key.</value>
+        TKey Key { get; }
+
+        /// <summary>
+        /// Gets a value indicating whether the item is logically expired or not.
+        /// Depending on the cache vendor, the item might still live in the cache although
+        /// according to the expiration mode and timeout, the item is already expired.
+        /// </summary>
+        bool IsExpired { get; }
+        
+        /// <summary>
         /// Gets the creation date of the cache item.
         /// </summary>
         /// <value>The creation date.</value>
@@ -26,12 +39,6 @@ namespace CacheManager.Core.Internal
         TimeSpan ExpirationTimeout { get; }
 
         /// <summary>
-        /// Gets the cache key.
-        /// </summary>
-        /// <value>The cache key.</value>
-        TKey Key { get; }
-
-        /// <summary>
         /// Gets or sets the last accessed date of the cache item.
         /// </summary>
         /// <value>The last accessed date.</value>
@@ -41,12 +48,5 @@ namespace CacheManager.Core.Internal
         /// Gets a value indicating whether the cache item uses the cache handle's configured expiration.
         /// </summary>
         bool UsesExpirationDefaults { get; }
-
-        /// <summary>
-        /// Gets the type of the cache value.
-        /// <para>This might be used for serialization and deserialization.</para>
-        /// </summary>
-        /// <value>The type of the cache value.</value>
-        Type ValueType { get; }
     }
 }
